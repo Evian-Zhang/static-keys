@@ -1,0 +1,20 @@
+[package]
+name = "static-keys"
+version = "0.1.0"
+edition = "2021"
+authors = ["Evian-Zhang <evianzhang1999@163.com>"]
+license = "MIT OR Apache-2.0"
+description = "Static keys for Rust userland applications."
+homepage = "https://github.com/Evian-Zhang/static-keys"
+documentation = "https://docs.rs/static-keys"
+repository = "https://github.com/Evian-Zhang/static-keys"
+readme = "README.md"
+keywords = ["static-keys", "Linux-kernel"]
+categories = ["rust-patterns", "no-std"]
+
+[features]
+default = ["std"]
+std = ["dep:nix"]
+
+[dependencies]
+nix = { version = "0.29", features = ["mman"], optional = true }
