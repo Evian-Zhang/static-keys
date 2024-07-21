@@ -17,8 +17,10 @@ jobs:
         os: [ubuntu-latest]
     steps:
     - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose --features=commandline
+    - name: Build all features
+      run: cargo build --verbose --all-features
+    - name: Build no_std
+      run: cargo build --verbose --no-default-features
     - name: Run tests
       run: cargo test --verbose
 
