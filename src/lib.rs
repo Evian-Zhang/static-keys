@@ -49,13 +49,13 @@ impl JumpEntry {
     }
 
     /// Shared reference to associated key
-    fn key<M: CodeManipulator>(&self) -> &NoStdStaticKey<M> {
-        unsafe { &*(self.key_addr() as usize as *const NoStdStaticKey<M>) }
+    fn key<M: CodeManipulator, const S: bool>(&self) -> &NoStdStaticKey<M, S> {
+        unsafe { &*(self.key_addr() as usize as *const NoStdStaticKey<M, S>) }
     }
 
     /// Unique reference to associated key
-    fn key_mut<M: CodeManipulator>(&self) -> &mut NoStdStaticKey<M> {
-        unsafe { &mut *(self.key_addr() as usize as *mut NoStdStaticKey<M>) }
+    fn key_mut<M: CodeManipulator, const S: bool>(&self) -> &mut NoStdStaticKey<M, S> {
+        unsafe { &mut *(self.key_addr() as usize as *mut NoStdStaticKey<M, S>) }
     }
 }
 
@@ -80,7 +80,7 @@ extern "Rust" {
 ///
 /// For now, it is not encouraged to modify static key in a multi-thread application (which I don't think
 /// is a common situation).
-pub struct NoStdStaticKey<M: CodeManipulator> {
+pub struct NoStdStaticKey<M: CodeManipulator, const S: bool> {
     /// Whether current key is true or false
     enabled: bool,
     /// Start address of associated jump entries.
@@ -97,21 +97,29 @@ pub struct NoStdStaticKey<M: CodeManipulator> {
 
 /// A convenient alias for [`NoStdStaticKey`], utilizing [`nix`] for memory protection manipulation.
 #[cfg(feature = "std")]
-pub type StaticKey = NoStdStaticKey<crate::code_manipulate::NixCodeManipulator>;
+pub type StaticKey<const S: bool> = NoStdStaticKey<crate::code_manipulate::NixCodeManipulator, S>;
+#[cfg(feature = "std")]
+pub type StaticTrueKey = StaticKey<true>;
+#[cfg(feature = "std")]
+pub type StaticFalseKey = StaticKey<false>;
 
-impl<M: CodeManipulator> NoStdStaticKey<M> {
+impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
     // pub const fn new_true() -> Self {
     //     Self::new(true)
     // }
 
-    /// Create a new static key with `false` as default value.
-    ///
-    /// Always call this method to initialize a static mut static key. It is UB to use this method
-    /// to create a static key on stack or heap, and use this static key to control branches.
-    ///
-    /// Currently, due to some technique reasons, we cannot write a `true` default static key
-    pub const fn new_false() -> Self {
-        Self::new(false)
+    // /// Create a new static key with `false` as default value.
+    // ///
+    // /// Always call this method to initialize a static mut static key. It is UB to use this method
+    // /// to create a static key on stack or heap, and use this static key to control branches.
+    // ///
+    // /// Currently, due to some technique reasons, we cannot write a `true` default static key
+    // pub const fn new_false() -> Self {
+    //     Self::new(false)
+    // }
+
+    pub const fn default_enabled(&self) -> bool {
+        S
     }
 
     /// Create a new static key with given default value.
@@ -157,7 +165,8 @@ impl<M: CodeManipulator> NoStdStaticKey<M> {
                 continue;
             }
             let entries_start_addr = jump_entry as *mut _ as usize;
-            let key = jump_entry.key_mut::<M>();
+            // The S generic is useless here
+            let key = jump_entry.key_mut::<M, true>();
             // Here we assign associated static key with the start address of jump entries
             key.entries = entries_start_addr;
             last_key_addr = key_addr;
@@ -166,14 +175,19 @@ impl<M: CodeManipulator> NoStdStaticKey<M> {
 }
 
 // ---------------------------- Create ----------------------------
-// #[cfg(feature = "std")]
-// #[macro_export]
-// macro_rules! define_static_key_true {
-//     ($key: ident) => {
-//         #[used]
-//         static mut $key: StaticKey = StaticKey::new_true();
-//     };
-// }
+#[cfg(feature = "std")]
+pub unsafe fn global_init() {
+    StaticTrueKey::global_init();
+}
+
+#[cfg(feature = "std")]
+pub const fn new_static_false_key() -> StaticFalseKey {
+    StaticFalseKey::new(false)
+}
+#[cfg(feature = "std")]
+pub const fn new_static_true_key() -> StaticTrueKey {
+    StaticTrueKey::new(true)
+}
 
 /// Define a static key with false value.
 #[cfg(feature = "std")]
@@ -181,7 +195,15 @@ impl<M: CodeManipulator> NoStdStaticKey<M> {
 macro_rules! define_static_key_false {
     ($key: ident) => {
         #[used]
-        static mut $key: StaticKey = StaticKey::new_false();
+        static mut $key: $crate::StaticFalseKey = $crate::new_static_false_key();
+    };
+}
+#[cfg(feature = "std")]
+#[macro_export]
+macro_rules! define_static_key_true {
+    ($key: ident) => {
+        #[used]
+        static mut $key: $crate::StaticTrueKey = $crate::new_static_true_key();
     };
 }
 
@@ -190,7 +212,10 @@ macro_rules! define_static_key_false {
 /// The internal method used for [`NoStdStaticKey::enable`] and [`NoStdStaticKey::disable`].
 ///
 /// This method will update instructions recorded in each jump entries that associated with thie static key
-unsafe fn static_key_update<M: CodeManipulator>(key: &mut NoStdStaticKey<M>, enabled: bool) {
+unsafe fn static_key_update<M: CodeManipulator, const S: bool>(
+    key: &mut NoStdStaticKey<M, S>,
+    enabled: bool,
+) {
     if key.enabled == enabled {
         return;
     }
@@ -202,7 +227,8 @@ unsafe fn static_key_update<M: CodeManipulator>(key: &mut NoStdStaticKey<M>, ena
             break;
         }
         let jump_entry = &*jump_entry_addr;
-        if !core::ptr::eq(key, jump_entry.key::<M>()) {
+        // The S generic is useless here
+        if !core::ptr::eq(key, jump_entry.key::<M, S>()) {
             break;
         }
 
@@ -303,20 +329,28 @@ macro_rules! static_key_init_jmp_with_given_branch_likely {
 
 /// Use this in a `if` condition, just like the usual `likely` and `unlikely` intrinsics
 #[macro_export]
-macro_rules! static_key_unlikely {
+macro_rules! static_branch_unlikely {
     ($key:path) => {{
         unsafe {
-            $crate::static_key_init_nop_with_given_branch_likely! { $key, false }
+            if $key.default_enabled() {
+                $crate::static_key_init_jmp_with_given_branch_likely! { $key, false }
+            } else {
+                $crate::static_key_init_nop_with_given_branch_likely! { $key, false }
+            }
         }
     }};
 }
 
 /// Use this in a `if` condition, just like the usual `likely` and `unlikely` intrinsics
 #[macro_export]
-macro_rules! static_key_likely {
+macro_rules! static_branch_likely {
     ($key:path) => {{
         unsafe {
-            $crate::static_key_init_jmp_with_given_branch_likely! { $key, true }
+            if $key.default_enabled() {
+                $crate::static_key_init_nop_with_given_branch_likely! { $key, true }
+            } else {
+                $crate::static_key_init_jmp_with_given_branch_likely! { $key, true }
+            }
         }
     }};
 }
