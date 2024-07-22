@@ -63,13 +63,18 @@ impl JumpEntry {
 // will generate these two symbols indicating the start and end address of __static_keys
 // section. Note that the end address is excluded.
 extern "Rust" {
+    /// Address of this static is the start address of __static_keys section
     #[link_name = "__start___static_keys"]
     static mut JUMP_ENTRY_START: JumpEntry;
+    /// Address of this static is the end address of __styatic_keys section (excluded)
     #[link_name = "__stop___static_keys"]
     static mut JUMP_ENTRY_STOP: JumpEntry;
 }
 
-/// Static key to hold data about current status and which jump entries are associated with this key
+/// Static key to hold data about current status and which jump entries are associated with this key.
+///
+/// For now, it is not encouraged to modify static key in a multi-thread application (which I don't think
+/// is a common situation).
 ///
 /// The `M: CodeManipulator` is required since when toggling the static key, the instructions recorded
 /// at associated jump entries need to be modified, which reside in `.text` section, which is a normally
@@ -78,8 +83,11 @@ extern "Rust" {
 /// If you are in a std environment, just use [`StaticKey`], which is a convenient alias, utilizing
 /// [`nix`] to modify memory protection.
 ///
-/// For now, it is not encouraged to modify static key in a multi-thread application (which I don't think
-/// is a common situation).
+/// The `const S: bool` indicates the initial status of this key. This value is determined
+/// at compile time, and only affect the initial generation of branch layout. All subsequent
+/// manually disabling and enabling will not be affected by the initial status. The struct
+/// layout is also consistent with different initial status. As a result, it is safe
+/// to assign arbitrary status to the static key generic when using.
 pub struct NoStdStaticKey<M: CodeManipulator, const S: bool> {
     /// Whether current key is true or false
     enabled: bool,
@@ -98,8 +106,10 @@ pub struct NoStdStaticKey<M: CodeManipulator, const S: bool> {
 /// A convenient alias for [`NoStdStaticKey`], utilizing [`nix`] for memory protection manipulation.
 #[cfg(feature = "std")]
 pub type StaticKey<const S: bool> = NoStdStaticKey<crate::code_manipulate::NixCodeManipulator, S>;
+/// A [`StaticKey`] with initial status `true`.
 #[cfg(feature = "std")]
 pub type StaticTrueKey = StaticKey<true>;
+/// A [`StaticKey`] with initial status `false`.
 #[cfg(feature = "std")]
 pub type StaticFalseKey = StaticKey<false>;
 
@@ -147,7 +157,7 @@ impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
     }
 
     /// Initialize the static keys data. Always call this method at beginning of application, before using any static key related
-    /// functionalities.
+    /// functionalities. Users in `std` environment should use [`global_init`] as convenience.
     pub unsafe fn global_init() {
         let jump_entry_start_addr = unsafe { core::ptr::addr_of_mut!(JUMP_ENTRY_START) };
         let jump_entry_stop_addr = unsafe { core::ptr::addr_of_mut!(JUMP_ENTRY_STOP) };
@@ -175,21 +185,47 @@ impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
 }
 
 // ---------------------------- Create ----------------------------
+/// Initialize the static keys data. Always call this method at beginning of application, before using any static key related
+/// functionalities.
 #[cfg(feature = "std")]
 pub unsafe fn global_init() {
     StaticTrueKey::global_init();
 }
 
+/// Create a new static key with `false` as initial value.
+///
+/// This method should be called to initialize a static mut static key. It is UB to use this method
+/// to create a static key on stack or heap, and use this static key to control branches.
+///
+/// Use [`define_static_key_false`] for short.
 #[cfg(feature = "std")]
 pub const fn new_static_false_key() -> StaticFalseKey {
     StaticFalseKey::new(false)
 }
+
+/// Create a new static key with `true` as initial value.
+///
+/// This method should be called to initialize a static mut static key. It is UB to use this method
+/// to create a static key on stack or heap, and use this static key to control branches.
+///
+/// Use [`define_static_key_true`] for short.
 #[cfg(feature = "std")]
 pub const fn new_static_true_key() -> StaticTrueKey {
     StaticTrueKey::new(true)
 }
 
-/// Define a static key with false value.
+/// Define a static key with `false` as initial value.
+///
+/// This macro will define a static mut variable without documentations and visibility modifiers.
+/// Use [`new_static_false_key`] for customization.
+///
+/// # Usage
+///
+/// ```rust
+/// use static_keys::define_static_key_false;
+///
+/// define_static_key_false!(MY_FALSE_STATIC_KEY);
+/// ```
 #[cfg(feature = "std")]
 #[macro_export]
 macro_rules! define_static_key_false {
@@ -198,6 +234,19 @@ macro_rules! define_static_key_false {
         static mut $key: $crate::StaticFalseKey = $crate::new_static_false_key();
     };
 }
+
+/// Define a static key with `true` as initial value.
+///
+/// This macro will define a static mut variable without documentations and visibility modifiers.
+/// Use [`new_static_true_key`] for customization.
+///
+/// # Usage
+///
+/// ```rust
+/// use static_keys::define_static_key_true;
+///
+/// define_static_key_true!(MY_TRUE_STATIC_KEY);
+/// ```
 #[cfg(feature = "std")]
 #[macro_export]
 macro_rules! define_static_key_true {
@@ -276,7 +325,7 @@ unsafe fn jump_entry_update<M: CodeManipulator>(jump_entry: &JumpEntry, enabled:
 #[macro_export]
 macro_rules! static_key_init_nop_with_given_branch_likely {
     ($key:path, $branch:expr) => {'my_label: {
-        core::arch::asm!(
+        ::core::arch::asm!(
             r#"
             2:
             .byte 0x0f,0x1f,0x44,0x00,0x00
@@ -299,11 +348,12 @@ macro_rules! static_key_init_nop_with_given_branch_likely {
     }};
 }
 
+// The three `0x90` here is to make sure the `jmp {0}` is at least 5 bytes long.
 #[doc(hidden)]
 #[macro_export]
 macro_rules! static_key_init_jmp_with_given_branch_likely {
     ($key:path, $branch:expr) => {'my_label: {
-        core::arch::asm!(
+        ::core::arch::asm!(
             r#"
             2: 
                 jmp {0}
@@ -327,7 +377,8 @@ macro_rules! static_key_init_jmp_with_given_branch_likely {
     }};
 }
 
-/// Use this in a `if` condition, just like the usual `likely` and `unlikely` intrinsics
+/// Use this in a `if` condition, just like the common [`likely`][core::intrinsics::likely]
+/// and [`unlikely`][core::intrinsics::unlikely] intrinsics
 #[macro_export]
 macro_rules! static_branch_unlikely {
     ($key:path) => {{
@@ -341,7 +392,8 @@ macro_rules! static_branch_unlikely {
     }};
 }
 
-/// Use this in a `if` condition, just like the usual `likely` and `unlikely` intrinsics
+/// Use this in a `if` condition, just like the common [`likely`][core::intrinsics::likely]
+/// and [`unlikely`][core::intrinsics::unlikely] intrinsics
 #[macro_export]
 macro_rules! static_branch_likely {
     ($key:path) => {{
