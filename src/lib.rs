@@ -48,11 +48,6 @@ impl JumpEntry {
         (self.key & 1usize) != 0
     }
 
-    /// Shared reference to associated key
-    fn key<M: CodeManipulator, const S: bool>(&self) -> &NoStdStaticKey<M, S> {
-        unsafe { &*(self.key_addr() as usize as *const NoStdStaticKey<M, S>) }
-    }
-
     /// Unique reference to associated key
     fn key_mut<M: CodeManipulator, const S: bool>(&self) -> &mut NoStdStaticKey<M, S> {
         unsafe { &mut *(self.key_addr() as usize as *mut NoStdStaticKey<M, S>) }
@@ -276,8 +271,8 @@ unsafe fn static_key_update<M: CodeManipulator, const S: bool>(
             break;
         }
         let jump_entry = &*jump_entry_addr;
-        // The S generic is useless here
-        if !core::ptr::eq(key, jump_entry.key::<M, S>()) {
+        // Not the same key
+        if key as *mut _ as usize != jump_entry.key_addr() {
             break;
         }
 
@@ -329,7 +324,7 @@ macro_rules! static_key_init_nop_with_given_branch_likely {
             r#"
             2:
             .byte 0x0f,0x1f,0x44,0x00,0x00
-            .pushsection __static_keys, "aw"
+            .pushsection __static_keys, "awR"
             .balign 8
             .quad 2b - .
             .quad {0} - .
@@ -358,7 +353,7 @@ macro_rules! static_key_init_jmp_with_given_branch_likely {
             2: 
                 jmp {0}
             .byte 0x90,0x90,0x90
-            .pushsection __static_keys, "aw"
+            .pushsection __static_keys, "awR"
             .balign 8
             .quad 2b - .
             .quad {0} - .
