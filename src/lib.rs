@@ -118,7 +118,7 @@ impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
     //     Self::new(false)
     // }
 
-    pub const fn default_enabled(&self) -> bool {
+    pub const fn initial_enabled(&self) -> bool {
         S
     }
 
@@ -332,7 +332,7 @@ macro_rules! static_key_init_jmp_with_given_branch_likely {
 macro_rules! static_branch_unlikely {
     ($key:path) => {{
         unsafe {
-            if $key.default_enabled() {
+            if $key.initial_enabled() {
                 $crate::static_key_init_jmp_with_given_branch_likely! { $key, false }
             } else {
                 $crate::static_key_init_nop_with_given_branch_likely! { $key, false }
@@ -346,7 +346,7 @@ macro_rules! static_branch_unlikely {
 macro_rules! static_branch_likely {
     ($key:path) => {{
         unsafe {
-            if $key.default_enabled() {
+            if $key.initial_enabled() {
                 $crate::static_key_init_nop_with_given_branch_likely! { $key, true }
             } else {
                 $crate::static_key_init_jmp_with_given_branch_likely! { $key, true }
