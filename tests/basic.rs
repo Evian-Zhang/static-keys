@@ -12,7 +12,7 @@ define_static_key_false!(INITIAL_FALSE_STATIC_KEY);
 
 fn test_init() {
     static INIT: Once = Once::new();
-    INIT.call_once(|| unsafe {
+    INIT.call_once(|| {
         static_keys::global_init();
     });
 }

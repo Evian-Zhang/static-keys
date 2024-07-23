@@ -18,3 +18,6 @@ std = ["dep:nix"]
 
 [dependencies]
 nix = { version = "0.29", features = ["mman"], optional = true }
+
+[dev-dependencies]
+trybuild = "1"

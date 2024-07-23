@@ -14,6 +14,9 @@ use code_manipulate::CodeManipulator;
 ///
 /// The fields of this struct are all **relative address** instead of absolute address considering ASLR.
 /// Specifically, it is the relative address between target address and the address of field that record it.
+///
+/// The relative addresses will be updated to absolute address after calling [`global_init`]. This
+/// is because we want to sort the jump entries in place.
 struct JumpEntry {
     /// Address of the JMP/NOP instruction to be modified.
     code: usize,
@@ -28,19 +31,26 @@ struct JumpEntry {
 }
 
 impl JumpEntry {
+    /// Update fields to be absolute address
+    fn make_relative_address_absolute(&mut self) {
+        self.code = (core::ptr::addr_of!(self.code) as usize).wrapping_add(self.code);
+        self.target = (core::ptr::addr_of!(self.target) as usize).wrapping_add(self.target);
+        self.key = (core::ptr::addr_of!(self.key) as usize).wrapping_add(self.key);
+    }
+
     /// Absolute address of the JMP/NOP instruction to be modified
     fn code_addr(&self) -> usize {
-        (core::ptr::addr_of!(self.code) as usize).wrapping_add(self.code)
+        self.code
     }
 
     /// Absolute address of the JMP destination
     fn target_addr(&self) -> usize {
-        (core::ptr::addr_of!(self.target) as usize).wrapping_add(self.target)
+        self.target
     }
 
     /// Absolute address of the associated static key
     fn key_addr(&self) -> usize {
-        (core::ptr::addr_of!(self.key) as usize).wrapping_add(self.key & !1usize)
+        self.key & !1usize
     }
 
     /// Return `true` if the likely branch is true branch.
@@ -52,7 +62,25 @@ impl JumpEntry {
     fn key_mut<M: CodeManipulator, const S: bool>(&self) -> &mut NoStdStaticKey<M, S> {
         unsafe { &mut *(self.key_addr() as usize as *mut NoStdStaticKey<M, S>) }
     }
+
+    /// Whether this jump entry is dummy
+    fn is_dummy(&self) -> bool {
+        self.code == 0
+    }
 }
+
+// Insert a dummy jump entry here to avoid linker failure when there is no
+// jump entries, and thus the __static_keys section is never defined.
+core::arch::global_asm!(
+    r#"
+    .pushsection __static_keys, "awR"
+    .balign 8
+    .quad 0
+    .quad 0
+    .quad 0
+    .popsection
+    "#
+);
 
 // See https://sourceware.org/binutils/docs/ld/Input-Section-Example.html, modern linkers
 // will generate these two symbols indicating the start and end address of __static_keys
@@ -109,20 +137,8 @@ pub type StaticTrueKey = StaticKey<true>;
 pub type StaticFalseKey = StaticKey<false>;
 
 impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
-    // pub const fn new_true() -> Self {
-    //     Self::new(true)
-    // }
-
-    // /// Create a new static key with `false` as default value.
-    // ///
-    // /// Always call this method to initialize a static mut static key. It is UB to use this method
-    // /// to create a static key on stack or heap, and use this static key to control branches.
-    // ///
-    // /// Currently, due to some technique reasons, we cannot write a `true` default static key
-    // pub const fn new_false() -> Self {
-    //     Self::new(false)
-    // }
-
+    /// Whether initial status is `true`
+    #[inline(always)]
     pub const fn initial_enabled(&self) -> bool {
         S
     }
@@ -142,29 +158,40 @@ impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
     }
 
     /// Enable this static key (make the value to be `true`). Do nothing if current static key is already enabled.
-    pub unsafe fn enable(&mut self) {
-        static_key_update(self, true)
+    pub fn enable(&mut self) {
+        unsafe { static_key_update(self, true) }
     }
 
     /// Disable this static key (make the value to be `false`). Do nothing if current static key is already disabled.
-    pub unsafe fn disable(&mut self) {
-        static_key_update(self, false)
+    pub fn disable(&mut self) {
+        unsafe { static_key_update(self, false) }
     }
 
     /// Initialize the static keys data. Always call this method at beginning of application, before using any static key related
     /// functionalities. Users in `std` environment should use [`global_init`] as convenience.
-    pub unsafe fn global_init() {
+    pub fn global_init() {
         let jump_entry_start_addr = unsafe { core::ptr::addr_of_mut!(JUMP_ENTRY_START) };
         let jump_entry_stop_addr = unsafe { core::ptr::addr_of_mut!(JUMP_ENTRY_STOP) };
         let jump_entry_len =
             unsafe { jump_entry_stop_addr.offset_from(jump_entry_start_addr) as usize };
         let jump_entries =
             unsafe { core::slice::from_raw_parts_mut(jump_entry_start_addr, jump_entry_len) };
+        // Update jump entries to be absolute address
+        for jump_entry in jump_entries.iter_mut() {
+            if jump_entry.is_dummy() {
+                continue;
+            }
+            jump_entry.make_relative_address_absolute();
+        }
         // The jump entries are sorted by key address and code address
         jump_entries
             .sort_unstable_by_key(|jump_entry| (jump_entry.key_addr(), jump_entry.code_addr()));
+        // Update associated static keys
         let mut last_key_addr = 0;
         for jump_entry in jump_entries {
+            if jump_entry.is_dummy() {
+                continue;
+            }
             let key_addr = jump_entry.key_addr();
             if key_addr == last_key_addr {
                 continue;
@@ -179,11 +206,19 @@ impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
     }
 }
 
+/// Count of jump entries in __static_keys section. Note that
+/// there will be an additional dummy jump entry inside this section.
+pub fn jump_entries_count() {
+    let jump_entry_start_addr = unsafe { core::ptr::addr_of_mut!(JUMP_ENTRY_START) };
+    let jump_entry_stop_addr = unsafe { core::ptr::addr_of_mut!(JUMP_ENTRY_STOP) };
+    unsafe { jump_entry_stop_addr.offset_from(jump_entry_start_addr) as usize };
+}
+
 // ---------------------------- Create ----------------------------
 /// Initialize the static keys data. Always call this method at beginning of application, before using any static key related
 /// functionalities.
 #[cfg(feature = "std")]
-pub unsafe fn global_init() {
+pub fn global_init() {
     StaticTrueKey::global_init();
 }
 
