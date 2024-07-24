@@ -72,7 +72,7 @@ First, add this crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-static-keys = "0.1"
+static-keys = "0.2"
 ```
 
 At the beginning of `main` function, you should invoke [`static_keys::global_init`](https://docs.rs/static-keys/latest/static-keys/fn.global_init.html) to initialize.
