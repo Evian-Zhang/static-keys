@@ -31,7 +31,7 @@ do_something:
 
 Although the `if`-check is just `test`-`jnz` instructions, it can still be speedup. What about making the check just a `jmp` (skip over the `do_something` branch) or `nop` (always `do_something`)? This is what static keys do. To put it simply, we **modify** the instruction at runtime. After getting the `flag` passed from commandline, we dynamically modify the `if flag {}` check to be a `jmp` or `nop` according to the `flag` value.
 
-For example, if user-specified `flag` is `true`, the assembled instructions will be **dynamically modified** to the following `nop` instruction.
+For example, if user-specified `flag` is `false`, the assembled instructions will be **dynamically modified** to the following `nop` instruction.
 
 ```x86asm
     nop     DWORD PTR [rax+rax*1+0x0]
@@ -43,7 +43,7 @@ do_something:
     jmp     do_common_routines
 ```
 
-If user-specified `flag` is `false`, then we will dynamically modify the instruction to an unconditional jump instruction:
+If user-specified `flag` is `true`, then we will dynamically modify the instruction to an unconditional jump instruction:
 
 ```x86asm
     jmp     do_something
