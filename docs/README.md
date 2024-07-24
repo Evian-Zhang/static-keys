@@ -75,7 +75,7 @@ First, add this crate to your `Cargo.toml`:
 static-keys = "0.2"
 ```
 
-At the beginning of `main` function, you should invoke [`static_keys::global_init`](https://docs.rs/static-keys/latest/static-keys/fn.global_init.html) to initialize.
+At the beginning of `main` function, you should invoke [`static_keys::global_init`](https://docs.rs/static-keys/latest/static_keys/fn.global_init.html) to initialize.
 
 ```rust
 fn main() {
