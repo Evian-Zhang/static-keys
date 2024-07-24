@@ -132,7 +132,8 @@ pub type StaticFalseKey = StaticKey<false>;
 // however, it seems a Rust bug to erase sections marked with "R" (retained). If we specify
 // --print-gc-sections for linker options, it's strange that linker itself does not
 // erase it. IT IS SO STRANGE.
-define_static_key_false!(DUMMY_STATIC_KEY);
+static mut DUMMY_STATIC_KEY: NoStdStaticKey<code_manipulate::DummyCodeManipulator, true> =
+    NoStdStaticKey::new(true);
 
 impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
     /// Whether initial status is `true`
@@ -172,8 +173,8 @@ impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
         if static_branch_unlikely!(DUMMY_STATIC_KEY) {
             return;
         }
-        let jump_entry_start_addr = unsafe { core::ptr::addr_of_mut!(JUMP_ENTRY_START) };
-        let jump_entry_stop_addr = unsafe { core::ptr::addr_of_mut!(JUMP_ENTRY_STOP) };
+        let jump_entry_start_addr = core::ptr::addr_of_mut!(JUMP_ENTRY_START);
+        let jump_entry_stop_addr = core::ptr::addr_of_mut!(JUMP_ENTRY_STOP);
         let jump_entry_len =
             unsafe { jump_entry_stop_addr.offset_from(jump_entry_start_addr) as usize };
         let jump_entries =
@@ -211,8 +212,8 @@ impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
 /// Count of jump entries in __static_keys section. Note that
 /// there will be several dummy jump entries inside this section.
 pub fn jump_entries_count() {
-    let jump_entry_start_addr = unsafe { core::ptr::addr_of_mut!(JUMP_ENTRY_START) };
-    let jump_entry_stop_addr = unsafe { core::ptr::addr_of_mut!(JUMP_ENTRY_STOP) };
+    let jump_entry_start_addr = core::ptr::addr_of_mut!(JUMP_ENTRY_START);
+    let jump_entry_stop_addr = core::ptr::addr_of_mut!(JUMP_ENTRY_STOP);
     unsafe { jump_entry_stop_addr.offset_from(jump_entry_start_addr) as usize };
 }
 

@@ -66,3 +66,13 @@ impl CodeManipulator for NixCodeManipulator {
         .expect("Unable to restore code region to non-writable");
     }
 }
+
+pub(crate) struct DummyCodeManipulator;
+
+impl CodeManipulator for DummyCodeManipulator {
+    unsafe fn mark_code_region_writable(_addr: *const core::ffi::c_void, _length: usize) -> Self {
+        Self
+    }
+
+    unsafe fn restore_code_region_protect(&self) {}
+}
