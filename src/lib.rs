@@ -6,6 +6,7 @@
 #[cfg(feature = "std")]
 extern crate std;
 
+mod arch;
 pub mod code_manipulate;
 
 use code_manipulate::CodeManipulator;
@@ -69,19 +70,6 @@ impl JumpEntry {
     }
 }
 
-// Insert a dummy jump entry here to avoid linker failure when there is no
-// jump entries, and thus the __static_keys section is never defined.
-core::arch::global_asm!(
-    r#"
-    .pushsection __static_keys, "awR"
-    .balign 8
-    .quad 0
-    .quad 0
-    .quad 0
-    .popsection
-    "#
-);
-
 // See https://sourceware.org/binutils/docs/ld/Input-Section-Example.html, modern linkers
 // will generate these two symbols indicating the start and end address of __static_keys
 // section. Note that the end address is excluded.
@@ -136,6 +124,16 @@ pub type StaticTrueKey = StaticKey<true>;
 #[cfg(feature = "std")]
 pub type StaticFalseKey = StaticKey<false>;
 
+// Insert a dummy static key here, and use this at global_init function. This is
+// to avoid linker failure when there is no jump entries, and thus the __static_keys
+// section is never defined.
+//
+// It should work if we just use global_asm to define a dummy jump entry in __static_keys,
+// however, it seems a Rust bug to erase sections marked with "R" (retained). If we specify
+// --print-gc-sections for linker options, it's strange that linker itself does not
+// erase it. IT IS SO STRANGE.
+define_static_key_false!(DUMMY_STATIC_KEY);
+
 impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
     /// Whether initial status is `true`
     #[inline(always)]
@@ -170,6 +168,10 @@ impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
     /// Initialize the static keys data. Always call this method at beginning of application, before using any static key related
     /// functionalities. Users in `std` environment should use [`global_init`] as convenience.
     pub fn global_init() {
+        // DUMMY_STATIC_KEY will never changed, and this will always be a NOP.
+        if static_branch_unlikely!(DUMMY_STATIC_KEY) {
+            return;
+        }
         let jump_entry_start_addr = unsafe { core::ptr::addr_of_mut!(JUMP_ENTRY_START) };
         let jump_entry_stop_addr = unsafe { core::ptr::addr_of_mut!(JUMP_ENTRY_STOP) };
         let jump_entry_len =
@@ -207,7 +209,7 @@ impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
 }
 
 /// Count of jump entries in __static_keys section. Note that
-/// there will be an additional dummy jump entry inside this section.
+/// there will be several dummy jump entries inside this section.
 pub fn jump_entries_count() {
     let jump_entry_start_addr = unsafe { core::ptr::addr_of_mut!(JUMP_ENTRY_START) };
     let jump_entry_stop_addr = unsafe { core::ptr::addr_of_mut!(JUMP_ENTRY_STOP) };
@@ -287,7 +289,6 @@ macro_rules! define_static_key_true {
 }
 
 // ---------------------------- Update ----------------------------
-
 /// The internal method used for [`NoStdStaticKey::enable`] and [`NoStdStaticKey::disable`].
 ///
 /// This method will update instructions recorded in each jump entries that associated with thie static key
@@ -301,6 +302,10 @@ unsafe fn static_key_update<M: CodeManipulator, const S: bool>(
     key.enabled = enabled;
     let jump_entry_stop_addr = core::ptr::addr_of!(JUMP_ENTRY_STOP);
     let mut jump_entry_addr = key.entries();
+    if jump_entry_addr.is_null() {
+        // This static key is never used
+        return;
+    }
     loop {
         if jump_entry_addr >= jump_entry_stop_addr {
             break;
@@ -332,81 +337,18 @@ unsafe fn jump_entry_update<M: CodeManipulator>(jump_entry: &JumpEntry, enabled:
     } else {
         JumpLabelType::Nop
     };
-    let code_bytes = match jump_label_type {
-        JumpLabelType::Jmp => {
-            let relative_addr = (jump_entry.target_addr() - (jump_entry.code_addr() + 5)) as u32;
-            let [a, b, c, d] = relative_addr.to_ne_bytes();
-            [0xe9, a, b, c, d]
-        }
-        JumpLabelType::Nop => [0x0f, 0x1f, 0x44, 0x00, 0x00],
-    };
+    let code_bytes = arch::arch_jump_entry_instruction(jump_label_type, jump_entry);
 
     let manipulator = M::mark_code_region_writable(jump_entry.code_addr() as *const _, 5);
     core::ptr::copy_nonoverlapping(
         code_bytes.as_ptr(),
         jump_entry.code_addr() as usize as *mut u8,
-        5,
+        arch::ARCH_JUMP_INS_LENGTH,
     );
     manipulator.restore_code_region_protect();
 }
 
 // ---------------------------- Use ----------------------------
-#[doc(hidden)]
-#[macro_export]
-macro_rules! static_key_init_nop_with_given_branch_likely {
-    ($key:path, $branch:expr) => {'my_label: {
-        ::core::arch::asm!(
-            r#"
-            2:
-            .byte 0x0f,0x1f,0x44,0x00,0x00
-            .pushsection __static_keys, "awR"
-            .balign 8
-            .quad 2b - .
-            .quad {0} - .
-            .quad {1} + {2} - .
-            .popsection
-            "#,
-            label {
-                break 'my_label !$branch;
-            },
-            sym $key,
-            const $branch as usize,
-        );
-
-        // This branch will be adjcent to the NOP/JMP instruction
-        break 'my_label $branch;
-    }};
-}
-
-// The three `0x90` here is to make sure the `jmp {0}` is at least 5 bytes long.
-#[doc(hidden)]
-#[macro_export]
-macro_rules! static_key_init_jmp_with_given_branch_likely {
-    ($key:path, $branch:expr) => {'my_label: {
-        ::core::arch::asm!(
-            r#"
-            2: 
-                jmp {0}
-            .byte 0x90,0x90,0x90
-            .pushsection __static_keys, "awR"
-            .balign 8
-            .quad 2b - .
-            .quad {0} - .
-            .quad {1} + {2} - .
-            .popsection
-            "#,
-            label {
-                break 'my_label !$branch;
-            },
-            sym $key,
-            const $branch as usize,
-        );
-
-        // This branch will be adjcent to the NOP/JMP instruction
-        break 'my_label $branch;
-    }};
-}
-
 /// Use this in a `if` condition, just like the common [`likely`][core::intrinsics::likely]
 /// and [`unlikely`][core::intrinsics::unlikely] intrinsics
 #[macro_export]
@@ -414,9 +356,9 @@ macro_rules! static_branch_unlikely {
     ($key:path) => {{
         unsafe {
             if $key.initial_enabled() {
-                $crate::static_key_init_jmp_with_given_branch_likely! { $key, false }
+                $crate::arch_static_key_init_jmp_with_given_branch_likely! { $key, false }
             } else {
-                $crate::static_key_init_nop_with_given_branch_likely! { $key, false }
+                $crate::arch_static_key_init_nop_with_given_branch_likely! { $key, false }
             }
         }
     }};
@@ -429,9 +371,9 @@ macro_rules! static_branch_likely {
     ($key:path) => {{
         unsafe {
             if $key.initial_enabled() {
-                $crate::static_key_init_nop_with_given_branch_likely! { $key, true }
+                $crate::arch_static_key_init_nop_with_given_branch_likely! { $key, true }
             } else {
-                $crate::static_key_init_jmp_with_given_branch_likely! { $key, true }
+                $crate::arch_static_key_init_jmp_with_given_branch_likely! { $key, true }
             }
         }
     }};

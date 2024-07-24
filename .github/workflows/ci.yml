@@ -10,11 +10,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
+  build-test-x86_64-linux:
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Build all features
@@ -23,6 +20,19 @@ jobs:
       run: cargo build --verbose --no-default-features
     - name: Run tests
       run: cargo test --verbose
+
+  build-test-i686-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install i686 target toolchain
+      run: rustup target add i686-unknown-linux-gnu
+    - name: Build all features
+      run: cargo build --verbose --all-features --target i686-unknown-linux-gnu
+    - name: Build no_std
+      run: cargo build --verbose --no-default-features --target i686-unknown-linux-gnu
+    - name: Run tests
+      run: cargo test --verbose --target i686-unknown-linux-gnu
 
   rustfmt:
     name: Rustfmt
