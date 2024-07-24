@@ -1,0 +1,8 @@
+[book]
+authors = ["Evian-Zhang"]
+src = "docs"
+title = "Static Keys"
+
+[output.html]
+mathjax-support = true
+git-repository-url = "https://github.com/Evian-Zhang/static-keys"

@@ -6,7 +6,7 @@
 
 It's a common practice for modern applications to be configurable, either by CLI options or config files. Those values controlled by configuration flags are usually not changed after application initialization, and are frequently accessed during the whole application lifetime.
 
-```rust
+```rust,ignore
 let flag = CommandlineArgs::parse();
 loop {
     if flag {
@@ -87,6 +87,9 @@ fn main() {
 Then you should define a static key to hold the value affected by user-controlled flag, and enable or disable it according to the user passed flag.
 
 ```rust
+# use static_keys::define_static_key_false;
+# struct CommandlineArgs {}
+# impl CommandlineArgs { fn parse() -> bool { true } }
 // FLAG_STATIC_KEY is defined with initial value `false`
 define_static_key_false!(FLAG_STATIC_KEY);
 
@@ -105,6 +108,14 @@ Note that you can enable or disable the static key any number of times at any ti
 After the definition, you can use this static key at `if`-check as usual (you can see [here](https://doc.rust-lang.org/std/intrinsics/fn.likely.html) to know more about the `likely`-`unlikely` API semantics).
 
 ```rust
+# #![feature(asm_goto)]
+# #![feature(asm_const)]
+# use static_keys::{define_static_key_false, static_branch_unlikely};
+# struct CommandlineArgs {}
+# impl CommandlineArgs { fn parse() -> bool { true } }
+# fn do_something() {}
+# fn do_common_routines() {}
+# define_static_key_false!(FLAG_STATIC_KEY);
 fn run() {
     loop {
         if static_branch_unlikely!(FLAG_STATIC_KEY) {

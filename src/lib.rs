@@ -1,4 +1,4 @@
-#![doc = include_str!("../README.md")]
+#![doc = include_str!("../docs/README.md")]
 #![no_std]
 #![feature(asm_goto)]
 #![feature(asm_const)]
