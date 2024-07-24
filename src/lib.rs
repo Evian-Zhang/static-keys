@@ -132,8 +132,8 @@ pub type StaticFalseKey = StaticKey<false>;
 // however, it seems a Rust bug to erase sections marked with "R" (retained). If we specify
 // --print-gc-sections for linker options, it's strange that linker itself does not
 // erase it. IT IS SO STRANGE.
-static mut DUMMY_STATIC_KEY: NoStdStaticKey<code_manipulate::DummyCodeManipulator, true> =
-    NoStdStaticKey::new(true);
+static mut DUMMY_STATIC_KEY: NoStdStaticKey<code_manipulate::DummyCodeManipulator, false> =
+    NoStdStaticKey::new(false);
 
 impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
     /// Whether initial status is `true`
