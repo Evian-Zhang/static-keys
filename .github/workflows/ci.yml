@@ -13,7 +13,7 @@ jobs:
   build-test-x86_64-linux:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Build all features
       run: cargo build --verbose --all-features
     - name: Build no_std
@@ -21,18 +21,24 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
 
-  build-test-i686-linux:
+  cross:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [
+          i686-unknown-linux-gnu,
+        ]
     steps:
-    - uses: actions/checkout@v3
-    - name: Install i686 target toolchain
-      run: rustup target add i686-unknown-linux-gnu
+    - name: checkout
+      uses: actions/checkout@v4
+    - name: Set up cross
+      run: cargo install cross
     - name: Build all features
-      run: cargo build --verbose --all-features --target i686-unknown-linux-gnu
+      run: cross build --verbose --all-features --target ${{ matrix.target }}
     - name: Build no_std
-      run: cargo build --verbose --no-default-features --target i686-unknown-linux-gnu
+      run: cross build --verbose --no-default-features --target ${{ matrix.target }}
     - name: Run tests
-      run: cargo test --verbose --target i686-unknown-linux-gnu
+      run: cross test --verbose --target ${{ matrix.target }}
 
   rustfmt:
     name: Rustfmt
@@ -41,6 +47,6 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Check code format
       run: cargo fmt --check
