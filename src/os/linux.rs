@@ -2,12 +2,13 @@
 
 use crate::JumpEntry;
 
-/// Section name of
+// See https://sourceware.org/binutils/docs/as/Section.html
+/// Name and attribute of section storing jump entries
 #[doc(hidden)]
 #[macro_export]
-macro_rules! os_static_key_sec_name {
+macro_rules! os_static_key_sec_name_attr {
     () => {
-        "__static_keys"
+        "__static_keys, \"awR\""
     };
 }
 

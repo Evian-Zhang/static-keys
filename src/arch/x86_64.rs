@@ -31,8 +31,8 @@ macro_rules! arch_static_key_init_nop_asm_template {
             2:
             .byte 0x0f,0x1f,0x44,0x00,0x00
             .pushsection "#,
-            $crate::os_static_key_sec_name!(),
-            r#", "awR"
+            $crate::os_static_key_sec_name_attr!(),
+            r#"
             .balign 8
             .quad 2b - .
             .quad {0} - .
@@ -54,8 +54,8 @@ macro_rules! arch_static_key_init_jmp_asm_template {
                 jmp {0}
             .byte 0x90,0x90,0x90
             .pushsection "#,
-            $crate::os_static_key_sec_name!(),
-            r#", "awR"
+            $crate::os_static_key_sec_name_attr!(),
+            r#"
             .balign 8
             .quad 2b - .
             .quad {0} - .
