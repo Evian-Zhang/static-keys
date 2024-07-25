@@ -342,6 +342,44 @@ unsafe fn jump_entry_update<M: CodeManipulator>(jump_entry: &JumpEntry, enabled:
 }
 
 // ---------------------------- Use ----------------------------
+/// With given branch as likely branch, initialize the instruction here as JMP instruction
+#[doc(hidden)]
+#[macro_export]
+macro_rules! static_key_init_jmp_with_given_branch_likely {
+    ($key:path, $branch:expr) => {'my_label: {
+        ::core::arch::asm!(
+            $crate::arch_static_key_init_jmp_asm_template!(),
+            label {
+                break 'my_label !$branch;
+            },
+            sym $key,
+            const $branch as usize,
+        );
+
+        // This branch will be adjcent to the NOP/JMP instruction
+        break 'my_label $branch;
+    }};
+}
+
+/// With given branch as likely branch, initialize the instruction here as NOP instruction
+#[doc(hidden)]
+#[macro_export]
+macro_rules! static_key_init_nop_with_given_branch_likely {
+    ($key:path, $branch:expr) => {'my_label: {
+        ::core::arch::asm!(
+            $crate::arch_static_key_init_nop_asm_template!(),
+            label {
+                break 'my_label !$branch;
+            },
+            sym $key,
+            const $branch as usize,
+        );
+
+        // This branch will be adjcent to the NOP/JMP instruction
+        break 'my_label $branch;
+    }};
+}
+
 /// Use this in a `if` condition, just like the common [`likely`][core::intrinsics::likely]
 /// and [`unlikely`][core::intrinsics::unlikely] intrinsics
 #[macro_export]
@@ -349,9 +387,9 @@ macro_rules! static_branch_unlikely {
     ($key:path) => {{
         unsafe {
             if $key.initial_enabled() {
-                $crate::arch_static_key_init_jmp_with_given_branch_likely! { $key, false }
+                $crate::static_key_init_jmp_with_given_branch_likely! { $key, false }
             } else {
-                $crate::arch_static_key_init_nop_with_given_branch_likely! { $key, false }
+                $crate::static_key_init_nop_with_given_branch_likely! { $key, false }
             }
         }
     }};
@@ -364,9 +402,9 @@ macro_rules! static_branch_likely {
     ($key:path) => {{
         unsafe {
             if $key.initial_enabled() {
-                $crate::arch_static_key_init_nop_with_given_branch_likely! { $key, true }
+                $crate::static_key_init_nop_with_given_branch_likely! { $key, true }
             } else {
-                $crate::arch_static_key_init_jmp_with_given_branch_likely! { $key, true }
+                $crate::static_key_init_jmp_with_given_branch_likely! { $key, true }
             }
         }
     }};

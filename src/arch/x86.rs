@@ -43,25 +43,6 @@ macro_rules! arch_static_key_init_nop_asm_template {
     };
 }
 
-/// With given branch as likely branch, initialize the instruction here as a 5-byte NOP instruction
-#[doc(hidden)]
-#[macro_export]
-macro_rules! arch_static_key_init_nop_with_given_branch_likely {
-    ($key:path, $branch:expr) => {'my_label: {
-        ::core::arch::asm!(
-            $crate::arch_static_key_init_nop_asm_template!(),
-            label {
-                break 'my_label !$branch;
-            },
-            sym $key,
-            const $branch as usize,
-        );
-
-        // This branch will be adjcent to the NOP/JMP instruction
-        break 'my_label $branch;
-    }};
-}
-
 // The `0x90,0x90,0x90` are three NOPs, which is to make sure the `jmp {0}` is at least 5 bytes long.
 #[doc(hidden)]
 #[macro_export]
@@ -83,23 +64,4 @@ macro_rules! arch_static_key_init_jmp_asm_template {
             "#
         )
     };
-}
-
-/// With given branch as likely branch, initialize the instruction here as JMP instruction
-#[doc(hidden)]
-#[macro_export]
-macro_rules! arch_static_key_init_jmp_with_given_branch_likely {
-    ($key:path, $branch:expr) => {'my_label: {
-        ::core::arch::asm!(
-            $crate::arch_static_key_init_jmp_asm_template!(),
-            label {
-                break 'my_label !$branch;
-            },
-            sym $key,
-            const $branch as usize,
-        );
-
-        // This branch will be adjcent to the NOP/JMP instruction
-        break 'my_label $branch;
-    }};
 }
