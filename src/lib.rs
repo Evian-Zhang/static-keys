@@ -3,9 +3,6 @@
 #![feature(asm_goto)]
 #![feature(asm_const)]
 
-#[cfg(feature = "std")]
-extern crate std;
-
 mod arch;
 pub mod code_manipulate;
 mod os;
@@ -61,8 +58,8 @@ impl JumpEntry {
     }
 
     /// Unique reference to associated key
-    fn key_mut<M: CodeManipulator, const S: bool>(&self) -> &mut NoStdStaticKey<M, S> {
-        unsafe { &mut *(self.key_addr() as usize as *mut NoStdStaticKey<M, S>) }
+    fn key_mut<M: CodeManipulator, const S: bool>(&self) -> &mut GenericStaticKey<M, S> {
+        unsafe { &mut *(self.key_addr() as usize as *mut GenericStaticKey<M, S>) }
     }
 
     /// Whether this jump entry is dummy
@@ -71,24 +68,18 @@ impl JumpEntry {
     }
 }
 
-/// Static key to hold data about current status and which jump entries are associated with this key.
-///
-/// For now, it is not encouraged to modify static key in a multi-thread application (which I don't think
-/// is a common situation).
+/// Static key generic over code manipulator.
 ///
 /// The `M: CodeManipulator` is required since when toggling the static key, the instructions recorded
 /// at associated jump entries need to be modified, which reside in `.text` section, which is a normally
 /// non-writable memory region. As a result, we need to change the protection of such memory region.
-///
-/// If you are in a std environment, just use [`StaticKey`], which is a convenient alias, utilizing
-/// [`nix`] to modify memory protection.
 ///
 /// The `const S: bool` indicates the initial status of this key. This value is determined
 /// at compile time, and only affect the initial generation of branch layout. All subsequent
 /// manually disabling and enabling will not be affected by the initial status. The struct
 /// layout is also consistent with different initial status. As a result, it is safe
 /// to assign arbitrary status to the static key generic when using.
-pub struct NoStdStaticKey<M: CodeManipulator, const S: bool> {
+pub struct GenericStaticKey<M: CodeManipulator, const S: bool> {
     /// Whether current key is true or false
     enabled: bool,
     /// Start address of associated jump entries.
@@ -103,14 +94,14 @@ pub struct NoStdStaticKey<M: CodeManipulator, const S: bool> {
     phantom: core::marker::PhantomData<M>,
 }
 
-/// A convenient alias for [`NoStdStaticKey`], utilizing [`nix`] for memory protection manipulation.
-#[cfg(feature = "std")]
-pub type StaticKey<const S: bool> = NoStdStaticKey<crate::code_manipulate::NixCodeManipulator, S>;
+/// Static key to hold data about current status and which jump entries are associated with this key.
+///
+/// For now, it is not encouraged to modify static key in a multi-thread application (which I don't think
+/// is a common situation).
+pub type StaticKey<const S: bool> = GenericStaticKey<crate::os::ArchCodeManipulator, S>;
 /// A [`StaticKey`] with initial status `true`.
-#[cfg(feature = "std")]
 pub type StaticTrueKey = StaticKey<true>;
 /// A [`StaticKey`] with initial status `false`.
-#[cfg(feature = "std")]
 pub type StaticFalseKey = StaticKey<false>;
 
 // Insert a dummy static key here, and use this at global_init function. This is
@@ -121,10 +112,10 @@ pub type StaticFalseKey = StaticKey<false>;
 // however, it seems a Rust bug to erase sections marked with "R" (retained). If we specify
 // --print-gc-sections for linker options, it's strange that linker itself does not
 // erase it. IT IS SO STRANGE.
-static mut DUMMY_STATIC_KEY: NoStdStaticKey<code_manipulate::DummyCodeManipulator, false> =
-    NoStdStaticKey::new(false);
+static mut DUMMY_STATIC_KEY: GenericStaticKey<code_manipulate::DummyCodeManipulator, false> =
+    GenericStaticKey::new(false);
 
-impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
+impl<M: CodeManipulator, const S: bool> GenericStaticKey<M, S> {
     /// Whether initial status is `true`
     #[inline(always)]
     pub const fn initial_enabled(&self) -> bool {
@@ -154,48 +145,6 @@ impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
     pub fn disable(&mut self) {
         unsafe { static_key_update(self, false) }
     }
-
-    /// Initialize the static keys data. Always call this method at beginning of application, before using any static key related
-    /// functionalities. Users in `std` environment should use [`global_init`] as convenience.
-    pub fn global_init() {
-        // DUMMY_STATIC_KEY will never changed, and this will always be a NOP.
-        if static_branch_unlikely!(DUMMY_STATIC_KEY) {
-            return;
-        }
-        let jump_entry_start_addr = core::ptr::addr_of_mut!(os::JUMP_ENTRY_START);
-        let jump_entry_stop_addr = core::ptr::addr_of_mut!(os::JUMP_ENTRY_STOP);
-        let jump_entry_len =
-            unsafe { jump_entry_stop_addr.offset_from(jump_entry_start_addr) as usize };
-        let jump_entries =
-            unsafe { core::slice::from_raw_parts_mut(jump_entry_start_addr, jump_entry_len) };
-        // Update jump entries to be absolute address
-        for jump_entry in jump_entries.iter_mut() {
-            if jump_entry.is_dummy() {
-                continue;
-            }
-            jump_entry.make_relative_address_absolute();
-        }
-        // The jump entries are sorted by key address and code address
-        jump_entries
-            .sort_unstable_by_key(|jump_entry| (jump_entry.key_addr(), jump_entry.code_addr()));
-        // Update associated static keys
-        let mut last_key_addr = 0;
-        for jump_entry in jump_entries {
-            if jump_entry.is_dummy() {
-                continue;
-            }
-            let key_addr = jump_entry.key_addr();
-            if key_addr == last_key_addr {
-                continue;
-            }
-            let entries_start_addr = jump_entry as *mut _ as usize;
-            // The S generic is useless here
-            let key = jump_entry.key_mut::<M, true>();
-            // Here we assign associated static key with the start address of jump entries
-            key.entries = entries_start_addr;
-            last_key_addr = key_addr;
-        }
-    }
 }
 
 /// Count of jump entries in __static_keys section. Note that
@@ -209,9 +158,43 @@ pub fn jump_entries_count() {
 // ---------------------------- Create ----------------------------
 /// Initialize the static keys data. Always call this method at beginning of application, before using any static key related
 /// functionalities.
-#[cfg(feature = "std")]
 pub fn global_init() {
-    StaticTrueKey::global_init();
+    // DUMMY_STATIC_KEY will never changed, and this will always be a NOP.
+    if static_branch_unlikely!(DUMMY_STATIC_KEY) {
+        return;
+    }
+    let jump_entry_start_addr = core::ptr::addr_of_mut!(os::JUMP_ENTRY_START);
+    let jump_entry_stop_addr = core::ptr::addr_of_mut!(os::JUMP_ENTRY_STOP);
+    let jump_entry_len =
+        unsafe { jump_entry_stop_addr.offset_from(jump_entry_start_addr) as usize };
+    let jump_entries =
+        unsafe { core::slice::from_raw_parts_mut(jump_entry_start_addr, jump_entry_len) };
+    // Update jump entries to be absolute address
+    for jump_entry in jump_entries.iter_mut() {
+        if jump_entry.is_dummy() {
+            continue;
+        }
+        jump_entry.make_relative_address_absolute();
+    }
+    // The jump entries are sorted by key address and code address
+    jump_entries.sort_unstable_by_key(|jump_entry| (jump_entry.key_addr(), jump_entry.code_addr()));
+    // Update associated static keys
+    let mut last_key_addr = 0;
+    for jump_entry in jump_entries {
+        if jump_entry.is_dummy() {
+            continue;
+        }
+        let key_addr = jump_entry.key_addr();
+        if key_addr == last_key_addr {
+            continue;
+        }
+        let entries_start_addr = jump_entry as *mut _ as usize;
+        // The M and S generic is useless here
+        let key = jump_entry.key_mut::<code_manipulate::DummyCodeManipulator, true>();
+        // Here we assign associated static key with the start address of jump entries
+        key.entries = entries_start_addr;
+        last_key_addr = key_addr;
+    }
 }
 
 /// Create a new static key with `false` as initial value.
@@ -220,7 +203,6 @@ pub fn global_init() {
 /// to create a static key on stack or heap, and use this static key to control branches.
 ///
 /// Use [`define_static_key_false`] for short.
-#[cfg(feature = "std")]
 pub const fn new_static_false_key() -> StaticFalseKey {
     StaticFalseKey::new(false)
 }
@@ -231,7 +213,6 @@ pub const fn new_static_false_key() -> StaticFalseKey {
 /// to create a static key on stack or heap, and use this static key to control branches.
 ///
 /// Use [`define_static_key_true`] for short.
-#[cfg(feature = "std")]
 pub const fn new_static_true_key() -> StaticTrueKey {
     StaticTrueKey::new(true)
 }
@@ -248,7 +229,6 @@ pub const fn new_static_true_key() -> StaticTrueKey {
 ///
 /// define_static_key_false!(MY_FALSE_STATIC_KEY);
 /// ```
-#[cfg(feature = "std")]
 #[macro_export]
 macro_rules! define_static_key_false {
     ($key: ident) => {
@@ -269,7 +249,6 @@ macro_rules! define_static_key_false {
 ///
 /// define_static_key_true!(MY_TRUE_STATIC_KEY);
 /// ```
-#[cfg(feature = "std")]
 #[macro_export]
 macro_rules! define_static_key_true {
     ($key: ident) => {
@@ -279,11 +258,11 @@ macro_rules! define_static_key_true {
 }
 
 // ---------------------------- Update ----------------------------
-/// The internal method used for [`NoStdStaticKey::enable`] and [`NoStdStaticKey::disable`].
+/// The internal method used for [`GenericStaticKey::enable`] and [`GenericStaticKey::disable`].
 ///
 /// This method will update instructions recorded in each jump entries that associated with thie static key
 unsafe fn static_key_update<M: CodeManipulator, const S: bool>(
-    key: &mut NoStdStaticKey<M, S>,
+    key: &mut GenericStaticKey<M, S>,
     enabled: bool,
 ) {
     if key.enabled == enabled {

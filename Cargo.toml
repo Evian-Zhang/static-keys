@@ -12,12 +12,8 @@ readme = "README.md"
 keywords = ["static-keys", "Linux-kernel"]
 categories = ["rust-patterns", "no-std"]
 
-[features]
-default = ["std"]
-std = ["dep:nix"]
-
-[dependencies]
-nix = { version = "0.29", features = ["mman"], optional = true }
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = { version = "0.2", default-features = false }
 
 [dev-dependencies]
 trybuild = "1"

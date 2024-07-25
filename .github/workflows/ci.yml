@@ -10,20 +10,25 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-test-x86_64-linux:
-    runs-on: ubuntu-latest
+  build-test-native:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [
+          ubuntu-latest,
+        ]
     steps:
     - uses: actions/checkout@v4
     - name: Build all features
       run: cargo build --verbose --all-features
-    - name: Build no_std
-      run: cargo build --verbose --no-default-features
     - name: Run tests
       run: cargo test --verbose
 
   cross:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         target: [
           i686-unknown-linux-gnu,
@@ -35,8 +40,6 @@ jobs:
       run: cargo install cross
     - name: Build all features
       run: cross build --verbose --all-features --target ${{ matrix.target }}
-    - name: Build no_std
-      run: cross build --verbose --no-default-features --target ${{ matrix.target }}
     - name: Run tests
       run: cross test --verbose --target ${{ matrix.target }}
 
