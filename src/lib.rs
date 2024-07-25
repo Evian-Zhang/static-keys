@@ -8,6 +8,7 @@ extern crate std;
 
 mod arch;
 pub mod code_manipulate;
+mod os;
 
 use code_manipulate::CodeManipulator;
 
@@ -68,18 +69,6 @@ impl JumpEntry {
     fn is_dummy(&self) -> bool {
         self.code == 0
     }
-}
-
-// See https://sourceware.org/binutils/docs/ld/Input-Section-Example.html, modern linkers
-// will generate these two symbols indicating the start and end address of __static_keys
-// section. Note that the end address is excluded.
-extern "Rust" {
-    /// Address of this static is the start address of __static_keys section
-    #[link_name = "__start___static_keys"]
-    static mut JUMP_ENTRY_START: JumpEntry;
-    /// Address of this static is the end address of __styatic_keys section (excluded)
-    #[link_name = "__stop___static_keys"]
-    static mut JUMP_ENTRY_STOP: JumpEntry;
 }
 
 /// Static key to hold data about current status and which jump entries are associated with this key.
@@ -173,8 +162,8 @@ impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
         if static_branch_unlikely!(DUMMY_STATIC_KEY) {
             return;
         }
-        let jump_entry_start_addr = core::ptr::addr_of_mut!(JUMP_ENTRY_START);
-        let jump_entry_stop_addr = core::ptr::addr_of_mut!(JUMP_ENTRY_STOP);
+        let jump_entry_start_addr = core::ptr::addr_of_mut!(os::JUMP_ENTRY_START);
+        let jump_entry_stop_addr = core::ptr::addr_of_mut!(os::JUMP_ENTRY_STOP);
         let jump_entry_len =
             unsafe { jump_entry_stop_addr.offset_from(jump_entry_start_addr) as usize };
         let jump_entries =
@@ -212,8 +201,8 @@ impl<M: CodeManipulator, const S: bool> NoStdStaticKey<M, S> {
 /// Count of jump entries in __static_keys section. Note that
 /// there will be several dummy jump entries inside this section.
 pub fn jump_entries_count() {
-    let jump_entry_start_addr = core::ptr::addr_of_mut!(JUMP_ENTRY_START);
-    let jump_entry_stop_addr = core::ptr::addr_of_mut!(JUMP_ENTRY_STOP);
+    let jump_entry_start_addr = core::ptr::addr_of_mut!(os::JUMP_ENTRY_START);
+    let jump_entry_stop_addr = core::ptr::addr_of_mut!(os::JUMP_ENTRY_STOP);
     unsafe { jump_entry_stop_addr.offset_from(jump_entry_start_addr) as usize };
 }
 
@@ -301,7 +290,7 @@ unsafe fn static_key_update<M: CodeManipulator, const S: bool>(
         return;
     }
     key.enabled = enabled;
-    let jump_entry_stop_addr = core::ptr::addr_of!(JUMP_ENTRY_STOP);
+    let jump_entry_stop_addr = core::ptr::addr_of!(os::JUMP_ENTRY_STOP);
     let mut jump_entry_addr = key.entries();
     if jump_entry_addr.is_null() {
         // This static key is never used
@@ -340,7 +329,10 @@ unsafe fn jump_entry_update<M: CodeManipulator>(jump_entry: &JumpEntry, enabled:
     };
     let code_bytes = arch::arch_jump_entry_instruction(jump_label_type, jump_entry);
 
-    let manipulator = M::mark_code_region_writable(jump_entry.code_addr() as *const _, 5);
+    let manipulator = M::mark_code_region_writable(
+        jump_entry.code_addr() as *const _,
+        arch::ARCH_JUMP_INS_LENGTH,
+    );
     core::ptr::copy_nonoverlapping(
         code_bytes.as_ptr(),
         jump_entry.code_addr() as usize as *mut u8,

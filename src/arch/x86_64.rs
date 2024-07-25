@@ -22,22 +22,34 @@ pub fn arch_jump_entry_instruction(
     }
 }
 
+#[doc(hidden)]
+#[macro_export]
+macro_rules! arch_static_key_init_nop_asm_template {
+    () => {
+        ::core::concat!(
+            r#"
+            2:
+            .byte 0x0f,0x1f,0x44,0x00,0x00
+            .pushsection "#,
+            $crate::os_static_key_sec_name!(),
+            r#", "awR"
+            .balign 8
+            .quad 2b - .
+            .quad {0} - .
+            .quad {1} + {2} - .
+            .popsection
+            "#
+        )
+    };
+}
+
 /// With given branch as likely branch, initialize the instruction here as a 5-byte NOP instruction
 #[doc(hidden)]
 #[macro_export]
 macro_rules! arch_static_key_init_nop_with_given_branch_likely {
     ($key:path, $branch:expr) => {'my_label: {
         ::core::arch::asm!(
-            r#"
-            2:
-            .byte 0x0f,0x1f,0x44,0x00,0x00
-            .pushsection __static_keys, "awR"
-            .balign 8
-            .quad 2b - .
-            .quad {0} - .
-            .quad {1} + {2} - .
-            .popsection
-            "#,
+            $crate::arch_static_key_init_nop_asm_template!(),
             label {
                 break 'my_label !$branch;
             },
@@ -50,24 +62,36 @@ macro_rules! arch_static_key_init_nop_with_given_branch_likely {
     }};
 }
 
-// The `0x0f,0x1f,0x00` is a 3-byte NOP, which is to make sure the `jmp {0}` is at least 5 bytes long.
+// The `0x90,0x90,0x90` are three NOPs, which is to make sure the `jmp {0}` is at least 5 bytes long.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! arch_static_key_init_jmp_asm_template {
+    () => {
+        ::core::concat!(
+            r#"
+            2:
+                jmp {0}
+            .byte 0x90,0x90,0x90
+            .pushsection "#,
+            $crate::os_static_key_sec_name!(),
+            r#", "awR"
+            .balign 8
+            .quad 2b - .
+            .quad {0} - .
+            .quad {1} + {2} - .
+            .popsection
+            "#
+        )
+    };
+}
+
 /// With given branch as likely branch, initialize the instruction here as JMP instruction
 #[doc(hidden)]
 #[macro_export]
 macro_rules! arch_static_key_init_jmp_with_given_branch_likely {
     ($key:path, $branch:expr) => {'my_label: {
         ::core::arch::asm!(
-            r#"
-            2: 
-                jmp {0}
-            .byte 0x0f,0x1f,0x00
-            .pushsection __static_keys, "awR"
-            .balign 8
-            .quad 2b - .
-            .quad {0} - .
-            .quad {1} + {2} - .
-            .popsection
-            "#,
+            $crate::arch_static_key_init_jmp_asm_template!(),
             label {
                 break 'my_label !$branch;
             },
