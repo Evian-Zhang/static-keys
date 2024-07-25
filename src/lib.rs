@@ -66,6 +66,15 @@ impl JumpEntry {
     fn is_dummy(&self) -> bool {
         self.code == 0
     }
+
+    /// Create a dummy jump entry
+    const fn dummy() -> Self {
+        Self {
+            code: 0,
+            target: 0,
+            key: 0,
+        }
+    }
 }
 
 /// Static key generic over code manipulator.
