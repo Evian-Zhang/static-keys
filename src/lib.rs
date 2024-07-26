@@ -318,16 +318,7 @@ unsafe fn jump_entry_update<M: CodeManipulator>(jump_entry: &JumpEntry, enabled:
     };
     let code_bytes = arch::arch_jump_entry_instruction(jump_label_type, jump_entry);
 
-    let manipulator = M::mark_code_region_writable(
-        jump_entry.code_addr() as *const _,
-        arch::ARCH_JUMP_INS_LENGTH,
-    );
-    core::ptr::copy_nonoverlapping(
-        code_bytes.as_ptr(),
-        jump_entry.code_addr() as usize as *mut u8,
-        arch::ARCH_JUMP_INS_LENGTH,
-    );
-    manipulator.restore_code_region_protect();
+    M::write_code(jump_entry.code_addr() as *mut _, &code_bytes);
 }
 
 // ---------------------------- Use ----------------------------

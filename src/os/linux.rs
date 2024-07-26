@@ -25,20 +25,17 @@ extern "Rust" {
 }
 
 /// Arch-specific [`CodeManipulator`] using [`libc`] with `mprotect`.
-pub struct ArchCodeManipulator {
-    /// Aligned addr
-    addr: *mut core::ffi::c_void,
-    /// Aligned length
-    length: usize,
-}
+pub struct ArchCodeManipulator;
 
 impl CodeManipulator for ArchCodeManipulator {
-    unsafe fn mark_code_region_writable(addr: *const core::ffi::c_void, length: usize) -> Self {
+    /// Due to limitation of Linux, we cannot get the original memory protection flags easily
+    /// without parsing `/proc/[pid]/maps`. As a result, we just make the code region non-writable.
+    unsafe fn write_code<const L: usize>(addr: *mut core::ffi::c_void, data: &[u8; L]) {
         // TODO: page_size can be initialized once
         let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) as usize };
         let aligned_addr_val = (addr as usize) / page_size * page_size;
         let aligned_addr = aligned_addr_val as *mut core::ffi::c_void;
-        let aligned_length = if (addr as usize) + length - aligned_addr_val > page_size {
+        let aligned_length = if (addr as usize) + L - aligned_addr_val > page_size {
             page_size * 2
         } else {
             page_size
@@ -53,17 +50,14 @@ impl CodeManipulator for ArchCodeManipulator {
         if res != 0 {
             panic!("Unable to make code region writable");
         }
-        Self {
-            addr: aligned_addr,
-            length: aligned_length,
-        }
-    }
-
-    /// Due to limitation of Linux, we cannot get the original memory protection flags easily
-    /// without parsing `/proc/[pid]/maps`. As a result, we just make the code region non-writable.
-    unsafe fn restore_code_region_protect(&self) {
-        let res =
-            unsafe { libc::mprotect(self.addr, self.length, libc::PROT_READ | libc::PROT_EXEC) };
+        core::ptr::copy_nonoverlapping(data.as_ptr(), addr.cast(), L);
+        let res = unsafe {
+            libc::mprotect(
+                aligned_addr,
+                aligned_length,
+                libc::PROT_READ | libc::PROT_EXEC,
+            )
+        };
         if res != 0 {
             panic!("Unable to restore code region to non-writable");
         }

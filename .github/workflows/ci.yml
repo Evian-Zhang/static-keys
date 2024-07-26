@@ -17,6 +17,7 @@ jobs:
       matrix:
         os: [
           ubuntu-latest,
+          macos-latest,
         ]
     steps:
     - uses: actions/checkout@v4

@@ -15,8 +15,7 @@ pub fn arch_jump_entry_instruction(
         JumpLabelType::Jmp => {
             // Note that aarch64 only supports relative address within +/-128MB.
             // In current implementation, this assumption is always hold.
-            let relative_addr =
-                (jump_entry.target_addr() - (jump_entry.code_addr() + ARCH_JUMP_INS_LENGTH)) as u32;
+            let relative_addr = (jump_entry.target_addr() - jump_entry.code_addr()) as u32;
             let [a, b, c, d] = (relative_addr / 4).to_ne_bytes();
             [a, b, c, d | 0b00010100]
         }
