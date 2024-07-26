@@ -68,6 +68,7 @@ impl JumpEntry {
     }
 
     /// Create a dummy jump entry
+    #[allow(unused)]
     const fn dummy() -> Self {
         Self {
             code: 0,
@@ -335,6 +336,8 @@ unsafe fn jump_entry_update<M: CodeManipulator>(jump_entry: &JumpEntry, enabled:
 #[macro_export]
 macro_rules! static_key_init_jmp_with_given_branch_likely {
     ($key:path, $branch:expr) => {'my_label: {
+        // This is an ugly workaround for https://github.com/rust-lang/rust/issues/128177
+        #[cfg(not(all(target_os = "windows", any(target_arch = "x86", target_arch = "x86_64"))))]
         ::core::arch::asm!(
             $crate::arch_static_key_init_jmp_asm_template!(),
             label {
@@ -342,6 +345,16 @@ macro_rules! static_key_init_jmp_with_given_branch_likely {
             },
             sym $key,
             const $branch as usize,
+        );
+        #[cfg(all(target_os = "windows", any(target_arch = "x86", target_arch = "x86_64")))]
+        ::core::arch::asm!(
+            $crate::arch_static_key_init_jmp_asm_template!(),
+            label {
+                break 'my_label !$branch;
+            },
+            sym $key,
+            const $branch as usize,
+            options(att_syntax),
         );
 
         // This branch will be adjcent to the NOP/JMP instruction
@@ -354,6 +367,8 @@ macro_rules! static_key_init_jmp_with_given_branch_likely {
 #[macro_export]
 macro_rules! static_key_init_nop_with_given_branch_likely {
     ($key:path, $branch:expr) => {'my_label: {
+        // This is an ugly workaround for https://github.com/rust-lang/rust/issues/128177
+        #[cfg(not(all(target_os = "windows", any(target_arch = "x86", target_arch = "x86_64"))))]
         ::core::arch::asm!(
             $crate::arch_static_key_init_nop_asm_template!(),
             label {
@@ -361,6 +376,16 @@ macro_rules! static_key_init_nop_with_given_branch_likely {
             },
             sym $key,
             const $branch as usize,
+        );
+        #[cfg(all(target_os = "windows", any(target_arch = "x86", target_arch = "x86_64")))]
+        ::core::arch::asm!(
+            $crate::arch_static_key_init_nop_asm_template!(),
+            label {
+                break 'my_label !$branch;
+            },
+            sym $key,
+            const $branch as usize,
+            options(att_syntax),
         );
 
         // This branch will be adjcent to the NOP/JMP instruction
