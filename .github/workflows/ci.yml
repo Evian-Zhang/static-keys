@@ -33,6 +33,8 @@ jobs:
           target: i686-pc-windows-msvc
     steps:
     - uses: actions/checkout@v4
+    - name: Install corresponding target
+      run: rustup target add ${{ matrix.target }}
     - name: Build all features
       run: cargo build --verbose --all-features --target ${{ matrix.target }}
     - name: Run tests
