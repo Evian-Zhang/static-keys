@@ -18,5 +18,8 @@ libc = { version = "0.2", default-features = false }
 [target.'cfg(target_os = "macos")'.dependencies]
 mach2 = "0.4"
 
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.58", features = ["Win32_System_SystemInformation", "Win32_System_Memory"] }
+
 [dev-dependencies]
 trybuild = "1"

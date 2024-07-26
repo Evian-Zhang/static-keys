@@ -1,5 +1,10 @@
 //! Windows-specific implementations
 
+use windows::Win32::System::{
+    Memory::{VirtualProtect, PAGE_EXECUTE_READWRITE, PAGE_PROTECTION_FLAGS},
+    SystemInformation::{GetSystemInfo, SYSTEM_INFO},
+};
+
 use crate::{code_manipulate::CodeManipulator, JumpEntry};
 
 // Bugs here, DO NOT USE. See https://github.com/rust-lang/rust/issues/128177
@@ -21,33 +26,48 @@ pub static mut JUMP_ENTRY_START: JumpEntry = JumpEntry::dummy();
 #[link_section = ".stks$c"]
 pub static mut JUMP_ENTRY_STOP: JumpEntry = JumpEntry::dummy();
 
-/// Arch-specific [`CodeManipulator`]
-pub struct ArchCodeManipulator {
-    /// Aligned addr
-    addr: *mut core::ffi::c_void,
-    /// Aligned length
-    length: usize,
-}
+/// Arch-specific [`CodeManipulator`] using `VirtualProtect`.
+pub struct ArchCodeManipulator;
 
 impl CodeManipulator for ArchCodeManipulator {
-    unsafe fn mark_code_region_writable(addr: *const core::ffi::c_void, length: usize) -> Self {
+    unsafe fn write_code<const L: usize>(addr: *mut core::ffi::c_void, data: &[u8; L]) {
         // TODO: page_size can be initialized once
-        let page_size = 1024;
+        let mut system_info = SYSTEM_INFO::default();
+        unsafe {
+            GetSystemInfo(&mut system_info);
+        }
+        let page_size = system_info.dwPageSize as usize;
         let aligned_addr_val = (addr as usize) / page_size * page_size;
         let aligned_addr = aligned_addr_val as *mut core::ffi::c_void;
-        let aligned_length = if (addr as usize) + length - aligned_addr_val > page_size {
+        let aligned_length = if (addr as usize) + L - aligned_addr_val > page_size {
             page_size * 2
         } else {
             page_size
         };
-        todo!();
-        Self {
-            addr: aligned_addr,
-            length: aligned_length,
+        let mut origin_protect = PAGE_PROTECTION_FLAGS::default();
+        let res = unsafe {
+            VirtualProtect(
+                aligned_addr,
+                aligned_length,
+                PAGE_EXECUTE_READWRITE,
+                &mut origin_protect,
+            )
+        };
+        if res.is_err() {
+            panic!("Unable to make code region writable");
         }
-    }
-
-    unsafe fn restore_code_region_protect(&self) {
-        todo!()
+        core::ptr::copy_nonoverlapping(data.as_ptr(), addr.cast(), L);
+        let mut old_protect = PAGE_PROTECTION_FLAGS::default();
+        let res = unsafe {
+            VirtualProtect(
+                aligned_addr,
+                aligned_length,
+                origin_protect,
+                &mut old_protect,
+            )
+        };
+        if res.is_err() {
+            panic!("Unable to restore code region to non-writable");
+        }
     }
 }
