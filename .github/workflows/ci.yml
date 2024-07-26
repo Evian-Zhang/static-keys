@@ -1,4 +1,4 @@
-name: Rust
+name: Rust CI
 
 on:
   push:
@@ -18,13 +18,25 @@ jobs:
         os: [
           ubuntu-latest,
           macos-latest,
+          windows-latest
         ]
+        include:
+        - os: ubuntu-latest
+          target: x86_64-unknown-linux-gnu
+        - os: ubuntu-latest
+          target: x86_64-unknown-linux-musl
+        - os: macos-latest
+          target: aarch64-apple-darwin
+        - os: windows-latest
+          target: x86_64-pc-windows-msvc
+        - os: windows-latest
+          target: i686-pc-windows-msvc
     steps:
     - uses: actions/checkout@v4
     - name: Build all features
-      run: cargo build --verbose --all-features
+      run: cargo build --verbose --all-features --target ${{ matrix.target }}
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --verbose --target ${{ matrix.target }} -- --test-threads=1
 
   cross:
     runs-on: ubuntu-latest
@@ -33,6 +45,7 @@ jobs:
       matrix:
         target: [
           i686-unknown-linux-gnu,
+          aarch64-unknown-linux-gnu,
         ]
     steps:
     - name: checkout
@@ -42,7 +55,7 @@ jobs:
     - name: Build all features
       run: cross build --verbose --all-features --target ${{ matrix.target }}
     - name: Run tests
-      run: cross test --verbose --target ${{ matrix.target }}
+      run: cross test --verbose --target ${{ matrix.target }} -- --test-threads=1
 
   rustfmt:
     name: Rustfmt

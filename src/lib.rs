@@ -31,10 +31,24 @@ struct JumpEntry {
 
 impl JumpEntry {
     /// Update fields to be absolute address
+    #[cfg(not(all(target_os = "windows", target_arch = "x86_64")))]
     fn make_relative_address_absolute(&mut self) {
         self.code = (core::ptr::addr_of!(self.code) as usize).wrapping_add(self.code);
         self.target = (core::ptr::addr_of!(self.target) as usize).wrapping_add(self.target);
         self.key = (core::ptr::addr_of!(self.key) as usize).wrapping_add(self.key);
+    }
+
+    // For Win64, the relative address is truncated into 32bit.
+    // See https://github.com/llvm/llvm-project/blob/862d837e483437b33f5588f89e62085de3a806b9/llvm/lib/Target/X86/MCTargetDesc/X86WinCOFFObjectWriter.cpp#L48-L51
+    /// Update fields to be absolute address
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    fn make_relative_address_absolute(&mut self) {
+        let code = (self.code as i32) as i64 as usize;
+        self.code = (core::ptr::addr_of!(self.code) as usize).wrapping_add(code);
+        let target = (self.target as i32) as i64 as usize;
+        self.target = (core::ptr::addr_of!(self.target) as usize).wrapping_add(target);
+        let key = (self.key as i32) as i64 as usize;
+        self.key = (core::ptr::addr_of!(self.key) as usize).wrapping_add(key);
     }
 
     /// Absolute address of the JMP/NOP instruction to be modified
