@@ -1,5 +1,7 @@
 //! OS-specific implementations
 
+// The start-stop symbols are inspired by linkme crate.
+
 #[cfg(target_os = "linux")]
 mod linux;
 #[cfg(target_os = "linux")]

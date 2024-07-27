@@ -1,6 +1,28 @@
 # static-keys
 
-[Static key](https://docs.kernel.org/staging/static-keys.html) is a mechanism used by Linux kernel to speed up checks of seldomly used features. We brought it to Rust userland applications! (Currently nightly Rust required).
+[![Rust CI status](https://github.com/Evian-Zhang/static-keys/actions/workflows/ci.yml/badge.svg)](https://github.com/Evian-Zhang/static-keys/actions/workflows/ci.yml)
+[![Crates.io Version](https://img.shields.io/crates/v/static-keys)](https://crates.io/crates/static-keys)
+[![docs.rs](https://img.shields.io/docsrs/static-keys?logo=docs.rs)](https://docs.rs/static-keys)
+
+[Static key](https://docs.kernel.org/staging/static-keys.html) is a mechanism used by Linux kernel to speed up checks of seldomly used features. We brought it to Rust userland applications for Linux, macOS and Windows! (Currently nightly Rust required).
+
+Currently CI-tested platforms:
+
+* Linux
+
+    * `x86_64-unknown-linux-gnu`
+    * `x86_64-unknown-linux-musl`
+    * `i686-unknown-linux-gnu`
+    * `aarch64-unknown-linux-gnu`
+* macOS
+
+    * `aarch64-apple-darwin`
+* Windows
+
+    * `x86_64-pc-windows-msvc`
+    * `i686-pc-windows-msvc`
+
+For more comprehensive explanations, you can refer to [GitHub Pages](https://evian-zhang.github.io/static-keys/).
 
 ## Motivation
 
@@ -43,7 +65,7 @@ do_something:
     jmp     do_common_routines
 ```
 
-If user-specified `flag` is `true`, then we will dynamically modify the instruction to an unconditional jump instruction:
+If `flag` is `true`, then we will dynamically modify the instruction to an unconditional jump instruction:
 
 ```x86asm
     jmp     do_something
@@ -96,16 +118,16 @@ define_static_key_false!(FLAG_STATIC_KEY);
 fn application_initialize() {
     let flag = CommandlineArgs::parse();
     if flag {
-        unsafe{
+        unsafe {
             FLAG_STATIC_KEY.enable();
         }
     }
 }
 ```
 
-Note that you can enable or disable the static key any number of times at any time, it is very dangerous if you modify the static key at one thread, and use it at another thread. So always make sure you are modifying a static key which is not used at the same time.
+Note that you can enable or disable the static key any number of times at any time. And more importantly, **it is very dangerous if you modify a static key in a multi-threads environment**. Always spawn threads after you complete the modification of such static keys. And to make it more clear, **it is absolutely safe to use this static key in multi-threads environment** as below. The modification of static keys may be less efficient, while since the static keys are used to seldomly changed features, the modifications rarely take place, so the inefficiency does not matter.
 
-After the definition, you can use this static key at `if`-check as usual (you can see [here](https://doc.rust-lang.org/std/intrinsics/fn.likely.html) to know more about the `likely`-`unlikely` API semantics).
+After the definition, you can use this static key at `if`-check as usual (you can see [here](https://doc.rust-lang.org/std/intrinsics/fn.likely.html) and [here](https://kernelnewbies.org/FAQ/LikelyUnlikely) to know more about the `likely`-`unlikely` API semantics). A static key can be used at multiple `if`-checks. If the static key is modified, all locations using this static key will be modified to `jmp` or `nop` accordingly.
 
 ```rust
 # #![feature(asm_goto)]

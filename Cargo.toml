@@ -12,6 +12,9 @@ readme = "README.md"
 keywords = ["static-keys", "Linux-kernel"]
 categories = ["rust-patterns", "no-std"]
 
+[badges]
+maintenance = { status = "actively-developed" }
+
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = { version = "0.2", default-features = false }
 
