@@ -2,6 +2,7 @@
 #![no_std]
 #![feature(asm_goto)]
 #![feature(asm_const)]
+#![allow(clippy::needless_doctest_main)]
 
 mod arch;
 pub mod code_manipulate;
@@ -72,8 +73,8 @@ impl JumpEntry {
     }
 
     /// Unique reference to associated key
-    fn key_mut<M: CodeManipulator, const S: bool>(&self) -> &mut GenericStaticKey<M, S> {
-        unsafe { &mut *(self.key_addr() as usize as *mut GenericStaticKey<M, S>) }
+    fn key_mut<M: CodeManipulator, const S: bool>(&self) -> &'static mut GenericStaticKey<M, S> {
+        unsafe { &mut *(self.key_addr() as *mut GenericStaticKey<M, S>) }
     }
 
     /// Whether this jump entry is dummy
@@ -161,13 +162,27 @@ impl<M: CodeManipulator, const S: bool> GenericStaticKey<M, S> {
     }
 
     /// Enable this static key (make the value to be `true`). Do nothing if current static key is already enabled.
-    pub fn enable(&mut self) {
-        unsafe { static_key_update(self, true) }
+    ///
+    /// # Safety
+    ///
+    /// This method may be UB if called before [`global_init`] or called in parallel. Never call this method when
+    /// there are multi-threads running. Spawn threads after this method is called. This method may manipulate
+    /// code region memory protection, and if other threads are executing codes in the same code page, it may
+    /// lead to unexpected behaviors.
+    pub unsafe fn enable(&mut self) {
+        static_key_update(self, true)
     }
 
     /// Disable this static key (make the value to be `false`). Do nothing if current static key is already disabled.
-    pub fn disable(&mut self) {
-        unsafe { static_key_update(self, false) }
+    ///
+    /// # Safety
+    ///
+    /// This method may be UB if called before [`global_init`] or called in parallel. Never call this method when
+    /// there are multi-threads running. Spawn threads after this method is called. This method may manipulate
+    /// code region memory protection, and if other threads are executing codes in the same code page, it may
+    /// lead to unexpected behaviors.
+    pub unsafe fn disable(&mut self) {
+        static_key_update(self, false)
     }
 }
 
@@ -180,13 +195,50 @@ pub fn jump_entries_count() {
 }
 
 // ---------------------------- Create ----------------------------
+/// Global state to make sure [`global_init`] is called only once
+static GLOBAL_INIT_STATE: core::sync::atomic::AtomicUsize = core::sync::atomic::AtomicUsize::new(0);
+const UNINITIALIZED: usize = 0;
+const INITIALIZING: usize = 1;
+const INITIALIZED: usize = 2;
+
 /// Initialize the static keys data. Always call this method at beginning of application, before using any static key related
 /// functionalities.
+///
+/// This function should be called only once. If calling this method multiple times in multi-threads, only the first invocation
+/// will take effect.
 pub fn global_init() {
     // DUMMY_STATIC_KEY will never changed, and this will always be a NOP.
+    // Doing this to make sure there are at least one jump entry.
     if static_branch_unlikely!(DUMMY_STATIC_KEY) {
         return;
     }
+
+    // This logic is taken from log::set_logger_inner
+    match GLOBAL_INIT_STATE.compare_exchange(
+        UNINITIALIZED,
+        INITIALIZING,
+        core::sync::atomic::Ordering::Acquire,
+        core::sync::atomic::Ordering::Relaxed,
+    ) {
+        Ok(UNINITIALIZED) => {
+            global_init_inner();
+            GLOBAL_INIT_STATE.store(INITIALIZED, core::sync::atomic::Ordering::Release);
+            // Successful init
+        }
+        Err(INITIALIZING) => {
+            while GLOBAL_INIT_STATE.load(core::sync::atomic::Ordering::Relaxed) == INITIALIZING {
+                core::hint::spin_loop();
+            }
+            // Other has inited
+        }
+        _ => {
+            // Other has inited
+        }
+    }
+}
+
+/// Inner function to [`global_init`]
+fn global_init_inner() {
     let jump_entry_start_addr = core::ptr::addr_of_mut!(os::JUMP_ENTRY_START);
     let jump_entry_stop_addr = core::ptr::addr_of_mut!(os::JUMP_ENTRY_STOP);
     let jump_entry_len =
@@ -285,6 +337,13 @@ macro_rules! define_static_key_true {
 /// The internal method used for [`GenericStaticKey::enable`] and [`GenericStaticKey::disable`].
 ///
 /// This method will update instructions recorded in each jump entries that associated with thie static key
+///
+/// # Safety
+///
+/// This method may be UB if called before [`global_init`] or called in parallel. Never call this method when
+/// there are multi-threads running. Spawn threads after this method is called. This method may manipulate
+/// code region memory protection, and if other threads are executing codes in the same code page, it may
+/// lead to unexpected behaviors.
 unsafe fn static_key_update<M: CodeManipulator, const S: bool>(
     key: &mut GenericStaticKey<M, S>,
     enabled: bool,
@@ -324,6 +383,13 @@ enum JumpLabelType {
 }
 
 /// Update instruction recorded in a single jump entry. This is where magic happens
+///
+/// # Safety
+///
+/// This method may be UB if called in parallel. Never call this method when
+/// there are multi-threads running. Spawn threads after this method is called. This method may manipulate
+/// code region memory protection, and if other threads are executing codes in the same code page, it may
+/// lead to unexpected behaviors.
 unsafe fn jump_entry_update<M: CodeManipulator>(jump_entry: &JumpEntry, enabled: bool) {
     let jump_label_type = if enabled ^ jump_entry.likely_branch_is_true() {
         JumpLabelType::Jmp

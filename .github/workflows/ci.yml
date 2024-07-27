@@ -15,22 +15,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [
-          ubuntu-latest,
-          macos-latest,
-          windows-latest
+        target: [
+          x86_64-unknown-linux-gnu,
+          x86_64-unknown-linux-musl,
+          aarch64-apple-darwin,
+          x86_64-pc-windows-msvc,
+          i686-pc-windows-msvc,
         ]
         include:
-        - os: ubuntu-latest
-          target: x86_64-unknown-linux-gnu
-        - os: ubuntu-latest
-          target: x86_64-unknown-linux-musl
-        - os: macos-latest
-          target: aarch64-apple-darwin
-        - os: windows-latest
-          target: x86_64-pc-windows-msvc
-        - os: windows-latest
-          target: i686-pc-windows-msvc
+        - target: x86_64-unknown-linux-gnu
+          os: ubuntu-latest
+        - target: x86_64-unknown-linux-musl
+          os: ubuntu-latest
+        - target: aarch64-apple-darwin
+          os: macos-latest
+        - target: x86_64-pc-windows-msvc
+          os: windows-latest
+        - target: i686-pc-windows-msvc
+          os: windows-latest
     steps:
     - uses: actions/checkout@v4
     - name: Install corresponding target
@@ -69,3 +71,26 @@ jobs:
     - uses: actions/checkout@v4
     - name: Check code format
       run: cargo fmt --check
+
+  clippy:
+    name: Rust Clippy
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run clippy
+      run: cargo clippy -- -Dwarnings
+
+  # Use individual doctest due to https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#doctest-xcompile
+  doctest:
+    name: Rustdoc Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test documentation
+      run: cargo test --verbose --doc -- --test-threads=1
