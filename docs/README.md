@@ -4,7 +4,7 @@
 [![Crates.io Version](https://img.shields.io/crates/v/static-keys)](https://crates.io/crates/static-keys)
 [![docs.rs](https://img.shields.io/docsrs/static-keys?logo=docs.rs)](https://docs.rs/static-keys)
 
-[Static key](https://docs.kernel.org/staging/static-keys.html) is a mechanism used by Linux kernel to speed up checks of seldomly used features. We brought it to Rust userland applications for Linux, macOS and Windows! (Currently nightly Rust required).
+[Static key](https://docs.kernel.org/staging/static-keys.html) is a mechanism used by Linux kernel to speed up checks of seldomly changed features. We brought it to Rust userland applications for Linux, macOS and Windows! (Currently nightly Rust required. For reasons, see [FAQ](https://evian-zhang.github.io/static-keys/FAQs.html#why-is-nightly-rust-required)).
 
 Currently CI-tested platforms:
 
@@ -22,7 +22,7 @@ Currently CI-tested platforms:
     * `x86_64-pc-windows-msvc`
     * `i686-pc-windows-msvc`
 
-For more comprehensive explanations, you can refer to [GitHub Pages](https://evian-zhang.github.io/static-keys/).
+For more comprehensive explanations and FAQs, you can refer to [GitHub Pages](https://evian-zhang.github.io/static-keys/).
 
 ## Motivation
 
@@ -79,7 +79,7 @@ do_something:
 
 There is no more `test` and conditional jumps, just a `nop` (which means this instruction does nothing) or `jmp`.
 
-Although replacing a `test`-`jnz` pair to `nop` may be minor improvement, however, as [documented in linux kernel](https://docs.kernel.org/staging/static-keys.html#motivation), if the configuration check involves global variables, this replacement can decrease memory cache pressure.
+Although replacing a `test`-`jnz` pair to `nop` may be minor improvement, however, as [documented in linux kernel](https://docs.kernel.org/staging/static-keys.html#motivation), if the configuration check involves global variables, this replacement can decrease memory cache pressure. And in server applications, such configuration may be shared between multiple threads in `Arc`s, which has much more overhead than just `nop` or `jmp`.
 
 ## Usage
 
@@ -94,7 +94,7 @@ First, add this crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-static-keys = "0.2"
+static-keys = "0.3"
 ```
 
 At the beginning of `main` function, you should invoke [`static_keys::global_init`](https://docs.rs/static-keys/latest/static_keys/fn.global_init.html) to initialize.
@@ -125,7 +125,7 @@ fn application_initialize() {
 }
 ```
 
-Note that you can enable or disable the static key any number of times at any time. And more importantly, **it is very dangerous if you modify a static key in a multi-threads environment**. Always spawn threads after you complete the modification of such static keys. And to make it more clear, **it is absolutely safe to use this static key in multi-threads environment** as below. The modification of static keys may be less efficient, while since the static keys are used to seldomly changed features, the modifications rarely take place, so the inefficiency does not matter.
+Note that you can enable or disable the static key any number of times at any time. And more importantly, **it is very dangerous if you modify a static key in a multi-threads environment**. Always spawn threads after you complete the modification of such static keys. And to make it more clear, **it is absolutely safe to use this static key in multi-threads environment** as below. The modification of static keys may be less efficient, while since the static keys are used to seldomly changed features, the modifications rarely take place, so the inefficiency does not matter. See [FAQ](https://evian-zhang.github.io/static-keys/FAQs.html#why-static-keys-must-only-be-modified-in-a-single-thread-environment) for more explanation.
 
 After the definition, you can use this static key at `if`-check as usual (you can see [here](https://doc.rust-lang.org/std/intrinsics/fn.likely.html) and [here](https://kernelnewbies.org/FAQ/LikelyUnlikely) to know more about the `likely`-`unlikely` API semantics). A static key can be used at multiple `if`-checks. If the static key is modified, all locations using this static key will be modified to `jmp` or `nop` accordingly.
 
