@@ -9,9 +9,9 @@ Two reasons:
 
 ## Why static keys must only be modified in a single-thread environment?
 
-Unlike Linux kernel, we cannot hold a memory lock in userland, which prevent other threads to execute the instructions being modified.
+In userland, it is very complicated to modify an instruction which may be executed by another thread. Linux kernel community once proposed a [`text_poke` syscall](https://lwn.net/Articles/574309/), but is still not available nowadays. BTW, [Linus doesn't seem to like it](https://lore.kernel.org/lkml/CA+55aFzr9ZKcGfT_Q31T9_vuCcmWxGCh0wixuZqt7VhjxxYU9g@mail.gmail.com/), and his reasons do make sense.
 
-Moreover, we need to manipulate memory protection to bypass DEP, which may involves race condition on the protection itself in multi-thread environment.
+Another reason is that we need to manipulate memory protection to bypass DEP, which may involves race condition on the protection itself in multi-thread environment.
 
 ## Why is nightly Rust required?
 
