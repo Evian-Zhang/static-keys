@@ -147,3 +147,9 @@ fn run() {
     }
 }
 ```
+
+## References
+
+* The Linux kernel official documentation : [static-keys](https://docs.kernel.org/staging/static-keys.html)
+* [Linux `static_key` internals](https://terenceli.github.io/%E6%8A%80%E6%9C%AF/2019/07/20/linux-static-key-internals)
+* Rust for Linux also has an implementation for static keys, please refer to [Rust-for-Linux/linux#1084](https://github.com/Rust-for-Linux/linux/pull/1084) for more information. My implementaion's `break`-based inline assembly layout is inspired by this great work.
