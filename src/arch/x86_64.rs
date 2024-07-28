@@ -22,6 +22,16 @@ pub fn arch_jump_entry_instruction(
     }
 }
 
+#[inline(always)]
+pub unsafe fn arch_atomic_copy_nonoverlapping(src: *const u8, dst: *mut u8) {
+    let mut bytes = [0u8; 16];
+    let aligned_dst = (dst as usize) / 16 * 16
+    core::ptr::copy_nonoverlapping(dst, bytes.as_mut_ptr(), 8);
+    core::ptr::copy_nonoverlapping(src, bytes.as_mut_ptr(), ARCH_JUMP_INS_LENGTH);
+    let dst_u64_atomic = core::sync::atomic::AtomicU64::from_ptr(dst.cast());
+    dst_u64_atomic.store(u64::from_ne_bytes(bytes), core::sync::atomic::Ordering::SeqCst);
+}
+
 #[doc(hidden)]
 #[macro_export]
 macro_rules! arch_static_key_init_nop_asm_template {

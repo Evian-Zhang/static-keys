@@ -15,6 +15,12 @@ categories = ["rust-patterns", "no-std"]
 [badges]
 maintenance = { status = "actively-developed" }
 
+[features]
+sync = []
+
+[dependencies]
+spin = { version = "0.9", features = ["mutex"] }
+
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = { version = "0.2", default-features = false }
 

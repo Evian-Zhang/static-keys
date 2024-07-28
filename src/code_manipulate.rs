@@ -20,6 +20,10 @@ pub trait CodeManipulator {
     unsafe fn write_code<const L: usize>(addr: *mut core::ffi::c_void, data: &[u8; L]);
 }
 
+pub trait SyncCodeManipulator: CodeManipulator {
+    unsafe fn write_code_sync<const L: usize>(addr: *mut core::ffi::c_void, data: &[u8; L]);
+}
+
 /// Dummy code manipulator. Do nothing. Used to declare a dummy static key which is never modified
 pub(crate) struct DummyCodeManipulator;
 

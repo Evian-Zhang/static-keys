@@ -5,7 +5,7 @@ use windows::Win32::System::{
     SystemInformation::{GetSystemInfo, SYSTEM_INFO},
 };
 
-use crate::{code_manipulate::CodeManipulator, JumpEntry};
+use crate::{code_manipulate::{CodeManipulator, SyncCodeManipulator}, JumpEntry};
 
 // Bugs here, DO NOT USE. See https://github.com/rust-lang/rust/issues/128177
 // See https://sourceware.org/binutils/docs/as/Section.html
@@ -29,8 +29,8 @@ pub static mut JUMP_ENTRY_STOP: JumpEntry = JumpEntry::dummy();
 /// Arch-specific [`CodeManipulator`] using `VirtualProtect`.
 pub struct ArchCodeManipulator;
 
-impl CodeManipulator for ArchCodeManipulator {
-    unsafe fn write_code<const L: usize>(addr: *mut core::ffi::c_void, data: &[u8; L]) {
+impl ArchCodeManipulator {
+    unsafe fn write_code_internal<F: Fn(*const u8, *mut u8), const L: usize>(addr: *mut core::ffi::c_void, data: &[u8; L], data_write: F) {
         // TODO: page_size can be initialized once
         let mut system_info = SYSTEM_INFO::default();
         unsafe {
@@ -56,7 +56,7 @@ impl CodeManipulator for ArchCodeManipulator {
         if res.is_err() {
             panic!("Unable to make code region writable");
         }
-        core::ptr::copy_nonoverlapping(data.as_ptr(), addr.cast(), L);
+        data_write(data.as_ptr(), addr.cast());
         let mut old_protect = PAGE_PROTECTION_FLAGS::default();
         let res = unsafe {
             VirtualProtect(
@@ -69,5 +69,25 @@ impl CodeManipulator for ArchCodeManipulator {
         if res.is_err() {
             panic!("Unable to restore code region to non-writable");
         }
+    }
+}
+
+impl CodeManipulator for ArchCodeManipulator {
+    unsafe fn write_code<const L: usize>(addr: *mut core::ffi::c_void, data: &[u8; L]) {
+        Self::write_code_internal(addr, data, |src, dst| {
+            core::ptr::copy_nonoverlapping(src, dst, L);
+        });
+    }
+}
+
+static PAGE_MANIPULATR_MUTEX: spin::Mutex<()> = spin::Mutex::new(());
+
+impl SyncCodeManipulator for ArchCodeManipulator {
+    unsafe fn write_code_sync<const L: usize>(addr: *mut core::ffi::c_void, data: &[u8; L]) {
+        let guard = PAGE_MANIPULATR_MUTEX.lock();
+        Self::write_code_internal(addr, data, |src, dst| {
+            crate::arch::arch_atomic_copy_nonoverlapping(src, dst);
+        });
+        drop(guard);
     }
 }
