@@ -202,35 +202,33 @@ DO_B:
 
 在使用`static_branch_likely!`时，更有可能被执行到的分支会放在`true`分支，也就是紧邻着主要部分，在执行完`nop`后就被执行。而`false`分支则被放在了其他位置，需要通过两个`jmp`来执行。
 
-In the inline assembly, the difference is represented by `break 'my_label true` or `break 'my_label false` in the end of block.
+在内联汇编中，这两种布局的差别是通过结尾的`break 'my_label true`和`break 'my_label false`来体现的。
 
-### Initial instruction
+### 初始指令
 
-After getting the right branch layout, then which instruction should be the initial instruction generated into the binary? It is used for the situation where, we do not update the static key, then its associated static branches need to take the correct path.
+在得到正确的分支布局之后，下一个问题就是，我们在生成可执行程序时，对应的默认的初始指令该是`nop`还是`jmp`呢？如果在程序启动后，我们不修改static key，那么这个默认的初始指令就会被执行。所以，正确的方案是：
 
-The rule is:
+* 对于 `static_branch_likely!`
 
-* For `static_branch_likely!`
+    * 如果static key的初始值为`true`，则生成`nop`
+    * 如果static key的初始值为`false`，则生成`jmp`
+* 对于`static_branch_unlikely!`
 
-    * If static key is defined with initial value `true`, then generate `nop`.
-    * If static key is defined with initial value `false`, then generate `jmp`.
-* For `static_branch_unlikely!`
+    * 如果static key的初始值为`false`，则生成`nop`
+    * 如果static key的初始值为`true`，则生成`jmp`
 
-    * If static key is defined with initial value `false`, then generate `nop`.
-    * If static key is defined with initial value `true`, then generate `jmp`.
+### 修改的方向
 
-### Modification direction
+另一个问题是，当修改static key时，我们应该更新至哪个指令？我们应当把`jmp`更新为`nop`，还是把`nop`更新为`jmp`？为了解决这个问题，我们应当使用`JumpEntry`结构体`key`字段的最后一字节记录的初始状态。
 
-Another question is, when enabling/disabling a static key, what instruction should we update to? Should we update `jmp` to `nop`, or update `nop` to `jmp`? To solve this question, we shall use the initial status recorded in the last byte of static key address in `key` field of `JumpEntry`.
+初始状态是布尔值，表示这个`if`判断中，更有可能的分支是否是`true`分支。正如上面所说，更有可能执行到的分支应当总是与主要部分相邻。而决定这个布尔值的是我们调用的是`static_branch_likely!`还是`static_branch_unlikely!`，以及static key的初始值/
 
-The initial status is a bool, which indicates whether the likely branch is `true` branch. As described above, the likely branch should always be adjacent to the main part. And this status is controlled by whether we use `static_branch_likely!` or `static_branch_unlikely!`, and the initial value of static key.
+当我们修改static branch时，我们可以通过将static key的新值与jump entry中记录的初始状态异或得到。例如，如果更有可能执行到的分支是`true`分支，并且static key的新值是`true`，那么我们应当将`jmp`更新为`nop`。这是因为我们需要执行紧挨着static branch判断的分支。
 
-Then when modifying static branches, the modification direction can be determined by `xor`ing the new value of static key, and the initial status recorded in jump entry. For example, if the likely branch is `true` branch, and the new value of static key is `true`, then we shall update `jmp` to `nop`, since we need to execute the block adjacent to the static branch check.
+## static branch的修改方式
 
-## Static Branch Modification Approach
+最后一个需要被解决的问题是如何修改static branch。
 
-The last question need to be solved, is how to modify static branch.
+众所周知，程序的指令都位于`text`节。在大多数平台上，`text`节拥有执行权限而没有写权限，从而阻止攻击者修改程序指令执行恶意逻辑。这种保护一般被称为DEP或者W^X。
 
-As a ground knowledge, the instructions are in text section. In most platforms, the text section has executable protection, and is non-writable to avoid attackers to modify instructions to execute malicious logic. This kind of protection mechanism is called DEP (Data Execution Protection) or W^X (Writable Xor eXecutable).
-
-In order to modify static branch instructions, we then need to bypass the DEP in a short moment. This may be dangerous and vulnerable, while the DEP bypassing only happens in the modification of static key. After modification done, the protection is restored. So pay attention to the modification!
+为了修改static branch处的指令，我们就需要暂时绕过DEP一会儿。这种绕过虽然是危险的，但是只会发生在static key的修改过程中。一旦结束修改，我们就会恢复相应的保护。因此，在修改static key时需要额外注意。

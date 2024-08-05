@@ -4,7 +4,7 @@
 [![Crates.io Version](https://img.shields.io/crates/v/static-keys)](https://crates.io/crates/static-keys)
 [![docs.rs](https://img.shields.io/docsrs/static-keys?logo=docs.rs)](https://docs.rs/static-keys)
 
-[Static key](https://docs.kernel.org/staging/static-keys.html)是Linux内核中的一个底层机制，用于加速对很少改变的特性的条件判断检查。我们将这一特性迁移到了用户态Rust程序中，适用于Linux、macOS和Windows。（目前需要Nightly版本的Rust，原因请参见[FAQ](https://evian-zhang.github.io/static-keys/zh-Hans/FAQs.html#why-is-nightly-rust-required)）
+[Static key](https://docs.kernel.org/staging/static-keys.html)是Linux内核中的一个底层机制，用于加速对很少改变的特性的条件判断检查。我们将这一特性迁移到了用户态Rust程序中，适用于Linux、macOS和Windows。（目前需要Nightly版本的Rust，原因请参见[FAQ](https://evian-zhang.github.io/static-keys/zh-Hans/FAQs.html#为什么需要nightly-rust)）
 
 目前在CI中经过测试的支持平台包括：
 
@@ -125,7 +125,7 @@ fn application_initialize() {
 }
 ```
 
-同一个static key可以在任意时刻多次更改值。但需要注意的是，**在多线程环境中修改static key是非常危险的**。因此，如果需要使用多线程，请在完成对static key的修改后再创建新线程。不过，**在多线程环境中使用static key是绝对安全的**。此外，对static key的修改相对比较慢，但由于static key一般用于控制很少被修改的特性，所以这样的修改相对比较少，因此慢点也没有太大影响。请参见[FAQ](https://evian-zhang.github.io/static-keys/zh-Hans/FAQs.html#why-static-keys-must-only-be-modified-in-a-single-thread-environment)了解更多。
+同一个static key可以在任意时刻多次更改值。但需要注意的是，**在多线程环境中修改static key是非常危险的**。因此，如果需要使用多线程，请在完成对static key的修改后再创建新线程。不过，**在多线程环境中使用static key是绝对安全的**。此外，对static key的修改相对比较慢，但由于static key一般用于控制很少被修改的特性，所以这样的修改相对比较少，因此慢点也没有太大影响。请参见[FAQ](https://evian-zhang.github.io/static-keys/zh-Hans/FAQs.html#为什么static-key必须在单线程环境下修改)了解更多。
 
 在定义static key之后，就可以像平常一样用`if`语句来使用这个static key了（[这个](https://doc.rust-lang.org/std/intrinsics/fn.likely.html)和[这个](https://kernelnewbies.org/FAQ/LikelyUnlikely)介绍了`likely`和`unlikely` API的语义）。同一个static key可以在多个`if`语句中被使用。当这个static key被修改时，所有使用这个static key的`if`语句都将被统一修改为`jmp`或`nop`。
 

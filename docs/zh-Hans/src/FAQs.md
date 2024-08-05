@@ -1,41 +1,40 @@
 # FAQs
 
-## Why static key should be applied to seldomly changed features?
+## 为什么static key应当被用在较少改变的特性上？
 
-Two reasons:
+两点原因：
 
-* The modification of static key will impose a potential security risk since we need to bypass DEP. The DEP will be restored after modification done.
-* The modification is less efficient since many syscalls are involved.
+* 对static key的修改需要绕过DEP，会带来潜在的安全风险。不过DEP会在修改结束后重新生效。
+* 对static key的修改比较慢，因为涉及到了许多系统调用。
 
-## Why static keys must only be modified in a single-thread environment?
+## 为什么static key必须在单线程环境下修改？
 
-In userland, it is very complicated to modify an instruction which may be executed by another thread. Linux kernel community once proposed a [`text_poke` syscall](https://lwn.net/Articles/574309/), but is still not available nowadays. BTW, [Linus doesn't seem to like it](https://lore.kernel.org/lkml/CA+55aFzr9ZKcGfT_Q31T9_vuCcmWxGCh0wixuZqt7VhjxxYU9g@mail.gmail.com/), and his reasons do make sense.
+在用户态，如果要修改别的线程可能会执行到的指令会非常复杂。Linux内核社区曾经提出过[`text_poke`系统调用](https://lwn.net/Articles/574309/)，但是如今仍不可用。顺带一提，[Linus好像不太喜欢这个](https://lore.kernel.org/lkml/CA+55aFzr9ZKcGfT_Q31T9_vuCcmWxGCh0wixuZqt7VhjxxYU9g@mail.gmail.com/)，并且他说的很有道理。
 
-Another reason is that we need to manipulate memory protection to bypass DEP, which may involves race condition on the protection itself in multi-thread environment.
+另一个原因是我们需要操作内存保护权限来绕过DEP，但是在多线程环境下，这会引发保护权限本身的race condition。
 
-## Why is nightly Rust required?
+## 为什么需要nightly Rust？
 
-We use inline assembly internally, where `asm_goto` and `asm_const` feature is required. As long as these two features are stablized, we can use stable Rust then.
+我们在内部使用了内联汇编，并且使用了`asm_goto`和`asm_const`这两个特性。只要这两个特性稳定了，我们就能使用stable Rust了。
 
-## Why `static_branch_likely!` and `static_branch_unlikely!` are implemented as macros?
+## 为什么`static_branch_likely!`和`static_branch_unlikely!`是宏？
 
-Because when passing a static variable to inline assembly as `sym` argument, it requires the argument to be a static path. We cannot construct such path in a function.
+因为内联汇编的`sym`参数需要是静态路径，这在函数里是做不到的。
 
-## What OS-specific features are required to extend to new OSs?
+## 如果要扩展到新的操作系统，需要实现哪些操作系统特性？
 
-* Symbols indicating a custom section's start and stop
+* 标志一个自定义节的开始和结束的符号
 
-    Used for sorting static keys section and iterating stop signs.
-* Approaches to keep custom section retained from linker's GC
-* Approaches to bypass DEP
+    这是用来对static key排序，以及标志循环结束
+* 保证自定义节不会被链接器的GC回收的方案
+* 绕过DEP的方案
 
-    Used to update static branch instructions.
+    用于更新static branch的指令
+## 如果要扩展到新的指令集架构，需要实现哪些架构特性？
 
-## What arch-specific features are required to extend to new architectures?
+* 与`jmp`等长的`nop`指令（或者可以整除，如2字节`nop`与4字节`jmp`）
+* Rust支持的内联汇编
 
-* A `nop` instruction with same length as `jmp` (or can divide the length, e.g. 2-byte `nop` and 4-byte `jmp`)
-* Inline assembly supported by Rust
+## 我可以在`no_std`环境中使用吗？
 
-## Can I use this crate in `no_std`?
-
-Yes.
+可以

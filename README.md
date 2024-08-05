@@ -22,7 +22,7 @@ Currently CI-tested platforms:
     * `x86_64-pc-windows-msvc`
     * `i686-pc-windows-msvc`
 
-For more comprehensive explanations and FAQs, you can refer to [GitHub Pages](https://evian-zhang.github.io/static-keys/en/)([中文版文档](https://evian-zhang.github.io/static-keys/zh-Hans/)).
+For more comprehensive explanations and FAQs, you can refer to [GitHub Pages](https://evian-zhang.github.io/static-keys/en/) ([中文版文档](https://evian-zhang.github.io/static-keys/zh-Hans/)).
 
 ## Motivation
 
