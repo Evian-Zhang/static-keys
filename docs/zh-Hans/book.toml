@@ -1,7 +1,10 @@
 [book]
 authors = ["Evian-Zhang"]
-src = "docs"
 title = "Static Keys"
+language = "zh-Hans"
+
+[build]
+build-dir = "../../book/zh-Hans"
 
 [output.html]
 mathjax-support = true

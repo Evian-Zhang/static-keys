@@ -4,7 +4,7 @@
 [![Crates.io Version](https://img.shields.io/crates/v/static-keys)](https://crates.io/crates/static-keys)
 [![docs.rs](https://img.shields.io/docsrs/static-keys?logo=docs.rs)](https://docs.rs/static-keys)
 
-[Static key](https://docs.kernel.org/staging/static-keys.html) is a mechanism used by Linux kernel to speed up checks of seldomly changed features. We brought it to Rust userland applications for Linux, macOS and Windows! (Currently nightly Rust required. For reasons, see [FAQ](https://evian-zhang.github.io/static-keys/FAQs.html#why-is-nightly-rust-required)).
+[Static key](https://docs.kernel.org/staging/static-keys.html) is a mechanism used by Linux kernel to speed up checks of seldomly changed features. We brought it to Rust userland applications for Linux, macOS and Windows! (Currently nightly Rust required. For reasons, see [FAQ](https://evian-zhang.github.io/static-keys/en/FAQs.html#why-is-nightly-rust-required)).
 
 Currently CI-tested platforms:
 
@@ -22,7 +22,7 @@ Currently CI-tested platforms:
     * `x86_64-pc-windows-msvc`
     * `i686-pc-windows-msvc`
 
-For more comprehensive explanations and FAQs, you can refer to [GitHub Pages](https://evian-zhang.github.io/static-keys/).
+For more comprehensive explanations and FAQs, you can refer to [GitHub Pages](https://evian-zhang.github.io/static-keys/en/)([中文版文档](https://evian-zhang.github.io/static-keys/zh-Hans/)).
 
 ## Motivation
 
@@ -122,7 +122,7 @@ fn application_initialize() {
 }
 ```
 
-Note that you can enable or disable the static key any number of times at any time. And more importantly, **it is very dangerous if you modify a static key in a multi-threads environment**. Always spawn threads after you complete the modification of such static keys. And to make it more clear, **it is absolutely safe to use this static key in multi-threads environment** as below. The modification of static keys may be less efficient, while since the static keys are used to seldomly changed features, the modifications rarely take place, so the inefficiency does not matter. See [FAQ](https://evian-zhang.github.io/static-keys/FAQs.html#why-static-keys-must-only-be-modified-in-a-single-thread-environment) for more explanation.
+Note that you can enable or disable the static key any number of times at any time. And more importantly, **it is very dangerous if you modify a static key in a multi-threads environment**. Always spawn threads after you complete the modification of such static keys. And to make it more clear, **it is absolutely safe to use this static key in multi-threads environment** as below. The modification of static keys may be less efficient, while since the static keys are used to seldomly changed features, the modifications rarely take place, so the inefficiency does not matter. See [FAQ](https://evian-zhang.github.io/static-keys/en/FAQs.html#why-static-keys-must-only-be-modified-in-a-single-thread-environment) for more explanation.
 
 After the definition, you can use this static key at `if`-check as usual (you can see [here](https://doc.rust-lang.org/std/intrinsics/fn.likely.html) and [here](https://kernelnewbies.org/FAQ/LikelyUnlikely) to know more about the `likely`-`unlikely` API semantics). A static key can be used at multiple `if`-checks. If the static key is modified, all locations using this static key will be modified to `jmp` or `nop` accordingly.
 

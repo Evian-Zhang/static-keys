@@ -40,8 +40,12 @@ jobs:
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
-      - name: Build with mdBook
-        run: mdbook build
+      - name: Prepare output directory
+        run: mkdir book
+      - name: Build English with mdBook
+        run: mdbook build docs/en
+      - name: Build Simplified Chinese with mdBook
+        run: mdbook build docs/zh-Hans
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

@@ -94,7 +94,7 @@ struct JumpEntry {
 }
 ```
 
-To construct such jump entry at static branch, we use the following inline assembly instruction (take x86-64 for example). When using `static_branch_likely!` and `static_branch_unlikely`, the following code snippet will be generated (details may be different).
+To construct such jump entry at static branch, we use the following inline assembly instruction (take x86-64 for example). When using `static_branch_likely!` and `static_branch_unlikely!`, the following code snippet will be generated (details may be different).
 
 ```rust, ignore
 'my_label {
@@ -198,7 +198,7 @@ Things go right!
 
 ### Branch layout
 
-As described in the static branch modification content, there are two branches to be executed: one can be executed after `nop`, and is adjacent to the main main part; another shall be executed with two additional `jmp`, and its location is in the end of function. This difference will make a little impact on the performance. Usually, the branch that unlikely to be executed should be the latter one, and the other should be the former one. In this crate, the layout is controlled by `static_branch_likely!` and `static_branch_unlikely!`.
+As described in the static branch modification content, there are two branches to be executed: one can be executed after `nop`, and is adjacent to the main part; another shall be executed with two additional `jmp`, and its location is in the end of function. This difference will make a little impact on the performance. Usually, the branch that unlikely to be executed should be the latter one, and the other should be the former one. In this crate, the layout is controlled by `static_branch_likely!` and `static_branch_unlikely!`.
 
 When using `static_branch_likely!`, the `true` branch will become a likely branch, which will be positioned near the main part, and can be just `nop`ed to it. The `false` branch is positioned in some other places, and is involved with two additional `jmp`s.
 
