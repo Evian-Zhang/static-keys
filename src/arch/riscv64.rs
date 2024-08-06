@@ -2,12 +2,10 @@
 
 use crate::{JumpEntry, JumpLabelType};
 
-
 /// Length of jump instruction to be replaced
 pub const ARCH_JUMP_INS_LENGTH: usize = 4;
 
 const RISCV_INSN_JAL: u32 = 0x0000006f;
-
 
 /// New instruction generated according to jump label type and jump entry
 #[inline(always)]
@@ -27,11 +25,10 @@ pub fn arch_jump_entry_instruction(
             // MASK 11    = 0b_0000_0000_0000_0000_0000_1000_0000_0000 = 0x00000800
             // MASK 10:1  = 0b_0000_0000_0000_0000_0000_0111_1111_1110 = 0x000007FE
             // MASK 20    = 0b_0000_0000_0001_0000_0000_0000_0000_0000 = 0x00100000
-            jal |=
-                ((relative_addr & 0x000FF000) << 0) |
-                ((relative_addr & 0x00000800) << 9) |
-                ((relative_addr & 0x000007FE) << 20) |
-                ((relative_addr & 0x00100000) << 11);
+            jal |= ((relative_addr & 0x000FF000) << 0)
+                | ((relative_addr & 0x00000800) << 9)
+                | ((relative_addr & 0x000007FE) << 20)
+                | ((relative_addr & 0x00100000) << 11);
             jal.to_ne_bytes()
         }
         // RISCV_INSN_NOP 0x00000013
@@ -63,7 +60,6 @@ macro_rules! arch_static_key_init_nop_asm_template {
         )
     };
 }
-
 
 #[doc(hidden)]
 #[macro_export]
