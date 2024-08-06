@@ -17,6 +17,7 @@ use code_manipulate::CodeManipulator;
 ///
 /// The relative addresses will be updated to absolute address after calling [`global_init`]. This
 /// is because we want to sort the jump entries in place.
+#[derive(Debug)]
 struct JumpEntry {
     /// Address of the JMP/NOP instruction to be modified.
     code: usize,
@@ -375,6 +376,7 @@ unsafe fn static_key_update<M: CodeManipulator, const S: bool>(
 }
 
 /// Type of the instructions to be modified
+#[derive(Debug)]
 enum JumpLabelType {
     /// 5 byte NOP
     Nop = 0,
