@@ -188,7 +188,7 @@ impl<M: CodeManipulator, const S: bool> GenericStaticKey<M, S> {
 
 /// Count of jump entries in __static_keys section. Note that
 /// there will be several dummy jump entries inside this section.
-pub fn jump_entries_count()-> usize {
+pub fn jump_entries_count() -> usize {
     let jump_entry_start_addr = core::ptr::addr_of_mut!(os::JUMP_ENTRY_START);
     let jump_entry_stop_addr = core::ptr::addr_of_mut!(os::JUMP_ENTRY_STOP);
     unsafe { jump_entry_stop_addr.offset_from(jump_entry_start_addr) as usize }
