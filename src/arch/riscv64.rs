@@ -32,7 +32,7 @@ pub fn arch_jump_entry_instruction(
             jal.to_ne_bytes()
         }
         // RISCV_INSN_NOP 0x00000013
-        JumpLabelType::Nop => [0x00, 0x00, 0x00, 0x13],
+        JumpLabelType::Nop => [0x13, 0x00, 0x00, 0x00],
     }
 }
 
