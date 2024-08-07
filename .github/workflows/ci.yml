@@ -57,7 +57,7 @@ jobs:
     - name: checkout
       uses: actions/checkout@v4
     - name: Set up cross
-      run: cargo install cross
+      run: cargo install cross --git https://github.com/cross-rs/cross
     - name: Build all features
       run: cross build --verbose --all-features --target ${{ matrix.target }}
     - name: Run tests
