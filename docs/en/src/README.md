@@ -14,6 +14,7 @@ Currently CI-tested platforms:
     * `x86_64-unknown-linux-musl`
     * `i686-unknown-linux-gnu`
     * `aarch64-unknown-linux-gnu`
+    * `riscv64gc-unknown-linux-gnu`
 * macOS
 
     * `aarch64-apple-darwin`
@@ -94,7 +95,7 @@ First, add this crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-static-keys = "0.3"
+static-keys = "0.4"
 ```
 
 At the beginning of `main` function, you should invoke [`static_keys::global_init`](https://docs.rs/static-keys/latest/static_keys/fn.global_init.html) to initialize.

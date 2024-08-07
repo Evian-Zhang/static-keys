@@ -14,6 +14,7 @@
     * `x86_64-unknown-linux-musl`
     * `i686-unknown-linux-gnu`
     * `aarch64-unknown-linux-gnu`
+    * `riscv64gc-unknown-linux-gnu`
 * macOS
 
     * `aarch64-apple-darwin`
@@ -94,7 +95,7 @@ do_something:
 
 ```toml
 [dependencies]
-static-keys = "0.3"
+static-keys = "0.4"
 ```
 
 在`main`函数开头，需要调用[`static_keys::global_init`](https://docs.rs/static-keys/latest/static_keys/fn.global_init.html)进行初始化。
