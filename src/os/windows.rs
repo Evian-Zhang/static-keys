@@ -1,8 +1,10 @@
 //! Windows-specific implementations
 
 use windows::Win32::System::{
+    Diagnostics::Debug::FlushInstructionCache,
     Memory::{VirtualProtect, PAGE_EXECUTE_READWRITE, PAGE_PROTECTION_FLAGS},
     SystemInformation::{GetSystemInfo, SYSTEM_INFO},
+    Threading::GetCurrentProcess,
 };
 
 use crate::{code_manipulate::CodeManipulator, JumpEntry};
@@ -68,6 +70,10 @@ impl CodeManipulator for ArchCodeManipulator {
         };
         if res.is_err() {
             panic!("Unable to restore code region to non-writable");
+        }
+        let res = unsafe { FlushInstructionCache(GetCurrentProcess(), Some(addr), L) };
+        if res.is_err() {
+            panic!("Failed to flush instruction cache");
         }
     }
 }
