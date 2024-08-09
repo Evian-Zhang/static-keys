@@ -43,7 +43,8 @@ macro_rules! arch_static_key_init_nop_asm_template {
     };
 }
 
-// The `0x90,0x90,0x90` are three NOPs, which is to make sure the `jmp {0}` is at least 5 bytes long.
+// Here we do not use `jmp {0}` because it may be compiled into a 3-byte jmp instead of 5 byte.
+// See https://stackoverflow.com/q/74771372/10005095
 #[doc(hidden)]
 #[macro_export]
 macro_rules! arch_static_key_init_jmp_asm_template {
