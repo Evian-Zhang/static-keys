@@ -17,6 +17,7 @@ maintenance = { status = "actively-developed" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = { version = "0.2", default-features = false }
+clear-cache = "0.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 mach2 = "0.4"

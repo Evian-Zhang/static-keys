@@ -40,26 +40,56 @@ impl CodeManipulator for ArchCodeManipulator {
         } else {
             page_size
         };
-        let res = unsafe {
-            libc::mprotect(
-                aligned_addr,
+
+        // Create a temp mmap, which will store updated content of corresponding pages
+        let mmaped_addr = unsafe {
+            libc::mmap(
+                core::ptr::null_mut(),
                 aligned_length,
-                libc::PROT_READ | libc::PROT_WRITE | libc::PROT_EXEC,
+                libc::PROT_READ | libc::PROT_WRITE,
+                libc::MAP_PRIVATE | libc::MAP_ANONYMOUS,
+                -1,
+                0,
             )
         };
-        if res != 0 {
-            panic!("Unable to make code region writable");
+        if mmaped_addr == libc::MAP_FAILED {
+            panic!("Failed to create temp mappings");
         }
-        core::ptr::copy_nonoverlapping(data.as_ptr(), addr.cast(), L);
+        unsafe {
+            let addr_in_mmap = mmaped_addr.offset(addr.offset_from(aligned_addr));
+            core::ptr::copy_nonoverlapping(aligned_addr, mmaped_addr, aligned_length);
+            core::ptr::copy_nonoverlapping(data.as_ptr(), addr_in_mmap.cast(), L);
+        }
         let res = unsafe {
             libc::mprotect(
-                aligned_addr,
+                mmaped_addr,
                 aligned_length,
                 libc::PROT_READ | libc::PROT_EXEC,
             )
         };
         if res != 0 {
-            panic!("Unable to restore code region to non-writable");
+            panic!("Unable to make mmaped mapping executable.");
+        }
+        // Remap the created temp mmaping to replace old mapping
+        let res = unsafe {
+            libc::mremap(
+                mmaped_addr,
+                aligned_length,
+                aligned_length,
+                libc::MREMAP_MAYMOVE | libc::MREMAP_FIXED,
+                // Any previous mapping at the address range specified by new_address and new_size is unmapped.
+                // So, no memory leak
+                aligned_addr,
+            )
+        };
+        if res == libc::MAP_FAILED {
+            panic!("Failed to mremap.");
+        }
+        let res = unsafe {
+            clear_cache::clear_cache(addr, addr.add(L));
+        };
+        if !res {
+            panic!("Failed to clear cache.");
         }
     }
 }
