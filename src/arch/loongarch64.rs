@@ -43,9 +43,9 @@ macro_rules! arch_static_key_init_nop_asm_template {
             $crate::os_static_key_sec_name_attr!(),
             r#"
             .balign 8
-            .quad 2b - 0
-            .quad {0} - 0
-            .quad {1} + {2} - 0
+            .quad 2b - .
+            .quad {0} - .
+            .quad {1} + {2} - .
             .popsection
             "#
         )
@@ -64,9 +64,9 @@ macro_rules! arch_static_key_init_jmp_asm_template {
             $crate::os_static_key_sec_name_attr!(),
             r#"
             .balign 8
-            .quad 2b - 0
-            .quad {0} - 0
-            .quad {1} + {2} - 0
+            .quad 2b - .
+            .quad {0} - .
+            .quad {1} + {2} - .
             .popsection
             "#
         )

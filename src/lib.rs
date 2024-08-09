@@ -35,12 +35,9 @@ impl JumpEntry {
     /// Update fields to be absolute address
     #[cfg(not(all(target_os = "windows", target_arch = "x86_64")))]
     fn make_relative_address_absolute(&mut self) {
-        #[cfg(not(target_arch = "loongarch64"))]
-        {
-            self.code = (core::ptr::addr_of!(self.code) as usize).wrapping_add(self.code);
-            self.target = (core::ptr::addr_of!(self.target) as usize).wrapping_add(self.target);
-            self.key = (core::ptr::addr_of!(self.key) as usize).wrapping_add(self.key);
-        }
+        self.code = (core::ptr::addr_of!(self.code) as usize).wrapping_add(self.code);
+        self.target = (core::ptr::addr_of!(self.target) as usize).wrapping_add(self.target);
+        self.key = (core::ptr::addr_of!(self.key) as usize).wrapping_add(self.key);
     }
 
     // For Win64, the relative address is truncated into 32bit.
