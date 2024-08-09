@@ -51,8 +51,8 @@ macro_rules! arch_static_key_init_jmp_asm_template {
         ::core::concat!(
             r#"
             2:
-                jmp {0}
-            .byte 0x90,0x90,0x90
+            .byte 0xe9
+            .long ({0} - 4) - .
             .pushsection "#,
             $crate::os_static_key_sec_name_attr!(),
             r#"
