@@ -85,9 +85,7 @@ impl CodeManipulator for ArchCodeManipulator {
         if res == libc::MAP_FAILED {
             panic!("Failed to mremap.");
         }
-        let res = unsafe {
-            clear_cache::clear_cache(addr, addr.add(L));
-        };
+        let res = unsafe { clear_cache::clear_cache(addr, addr.add(L)) };
         if !res {
             panic!("Failed to clear cache.");
         }
