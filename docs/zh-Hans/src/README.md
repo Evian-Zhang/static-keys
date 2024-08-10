@@ -15,6 +15,7 @@
     * `i686-unknown-linux-gnu`
     * `aarch64-unknown-linux-gnu`
     * `riscv64gc-unknown-linux-gnu`
+    * `loongarch64-unknown-linux-gnu`
 * macOS
 
     * `aarch64-apple-darwin`
@@ -22,6 +23,8 @@
 
     * `x86_64-pc-windows-msvc`
     * `i686-pc-windows-msvc`
+
+需要注意，如果使用cross-rs交叉编译`loongarch64-unknown-linux-gnu`平台，需要使用GitHub上的最新版cross-rs。更多细节可参见[Evian-Zhang/static-keys#4](https://github.com/Evian-Zhang/static-keys/pull/4)。
 
 更详细的解释和FAQ可参见[GitHub Pages](https://evian-zhang.github.io/static-keys/zh-Hans/)([English version](https://evian-zhang.github.io/static-keys/en/)).
 
@@ -95,7 +98,7 @@ do_something:
 
 ```toml
 [dependencies]
-static-keys = "0.4"
+static-keys = "0.5"
 ```
 
 在`main`函数开头，需要调用[`static_keys::global_init`](https://docs.rs/static-keys/latest/static_keys/fn.global_init.html)进行初始化。

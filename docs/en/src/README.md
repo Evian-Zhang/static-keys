@@ -15,6 +15,7 @@ Currently CI-tested platforms:
     * `i686-unknown-linux-gnu`
     * `aarch64-unknown-linux-gnu`
     * `riscv64gc-unknown-linux-gnu`
+    * `loongarch64-unknown-linux-gnu`
 * macOS
 
     * `aarch64-apple-darwin`
@@ -22,6 +23,8 @@ Currently CI-tested platforms:
 
     * `x86_64-pc-windows-msvc`
     * `i686-pc-windows-msvc`
+
+Note that when using cross-rs to build `loongarch64-unknown-linux-gnu` target, you should use latest cross-rs avaiable on GitHub. See [Evian-Zhang/static-keys#4](https://github.com/Evian-Zhang/static-keys/pull/4) for more details.
 
 For more comprehensive explanations and FAQs, you can refer to [GitHub Pages](https://evian-zhang.github.io/static-keys/en/) ([中文版文档](https://evian-zhang.github.io/static-keys/zh-Hans/)).
 
@@ -95,7 +98,7 @@ First, add this crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-static-keys = "0.4"
+static-keys = "0.5"
 ```
 
 At the beginning of `main` function, you should invoke [`static_keys::global_init`](https://docs.rs/static-keys/latest/static_keys/fn.global_init.html) to initialize.
