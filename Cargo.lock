@@ -3,6 +3,16 @@
 version = 3
 
 [[package]]
+name = "clear-cache"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20d9da0bc09582e0aa48f88476160bfe0f5f82cf97fc47eef1f701b7f59e27d2"
+dependencies = [
+ "libc",
+ "windows",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -125,6 +135,7 @@ dependencies = [
 name = "static-keys"
 version = "0.4.0"
 dependencies = [
+ "clear-cache",
  "libc",
  "mach2",
  "trybuild",
