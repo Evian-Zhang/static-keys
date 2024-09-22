@@ -1,7 +1,6 @@
 //! This test is designed to be run in single thread. Always pass `--test-threads=1`!
 
 #![feature(asm_goto)]
-#![feature(asm_const)]
 
 use std::sync::Once;
 

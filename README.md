@@ -87,11 +87,10 @@ Although replacing a `test`-`jnz` pair to `nop` may be minor improvement, howeve
 
 ## Usage
 
-To use this crate, currently nightly Rust is required. And in the crate root top, you should declare usage of unstable features `asm_goto` and `asm_const`.
+To use this crate, currently nightly Rust is required. And in the crate root top, you should declare usage of unstable features `asm_goto`.
 
 ```rust
 #![feature(asm_goto)]
-#![feature(asm_const)]
 ```
 
 First, add this crate to your `Cargo.toml`:

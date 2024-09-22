@@ -1,7 +1,6 @@
 #![doc = include_str!("../docs/en/src/README.md")]
 #![no_std]
 #![feature(asm_goto)]
-#![feature(asm_const)]
 #![allow(clippy::needless_doctest_main)]
 
 mod arch;
@@ -107,7 +106,10 @@ impl JumpEntry {
 /// to assign arbitrary status to the static key generic when using.
 pub struct GenericStaticKey<M: CodeManipulator, const S: bool> {
     /// Whether current key is true or false
-    enabled: bool,
+    ///
+    /// This field is defined as `AtomicBool` to allow interior mutability of static variables to avoid
+    /// creating mutable static.
+    enabled: core::sync::atomic::AtomicBool,
     /// Start address of associated jump entries.
     ///
     /// The jump entries are sorted based on associated static key address in [`global_init`][Self::global_init]
@@ -138,7 +140,7 @@ pub type StaticFalseKey = StaticKey<false>;
 // however, it seems a Rust bug to erase sections marked with "R" (retained). If we specify
 // --print-gc-sections for linker options, it's strange that linker itself does not
 // erase it. IT IS SO STRANGE.
-static mut DUMMY_STATIC_KEY: GenericStaticKey<code_manipulate::DummyCodeManipulator, false> =
+static DUMMY_STATIC_KEY: GenericStaticKey<code_manipulate::DummyCodeManipulator, false> =
     GenericStaticKey::new(false);
 
 impl<M: CodeManipulator, const S: bool> GenericStaticKey<M, S> {
@@ -151,7 +153,7 @@ impl<M: CodeManipulator, const S: bool> GenericStaticKey<M, S> {
     /// Create a new static key with given default value.
     const fn new(enabled: bool) -> Self {
         Self {
-            enabled,
+            enabled: core::sync::atomic::AtomicBool::new(enabled),
             entries: 0,
             phantom: core::marker::PhantomData,
         }
@@ -170,7 +172,7 @@ impl<M: CodeManipulator, const S: bool> GenericStaticKey<M, S> {
     /// there are multi-threads running. Spawn threads after this method is called. This method may manipulate
     /// code region memory protection, and if other threads are executing codes in the same code page, it may
     /// lead to unexpected behaviors.
-    pub unsafe fn enable(&mut self) {
+    pub unsafe fn enable(&self) {
         static_key_update(self, true)
     }
 
@@ -182,7 +184,7 @@ impl<M: CodeManipulator, const S: bool> GenericStaticKey<M, S> {
     /// there are multi-threads running. Spawn threads after this method is called. This method may manipulate
     /// code region memory protection, and if other threads are executing codes in the same code page, it may
     /// lead to unexpected behaviors.
-    pub unsafe fn disable(&mut self) {
+    pub unsafe fn disable(&self) {
         static_key_update(self, false)
     }
 }
@@ -310,7 +312,7 @@ pub const fn new_static_true_key() -> StaticTrueKey {
 macro_rules! define_static_key_false {
     ($key: ident) => {
         #[used]
-        static mut $key: $crate::StaticFalseKey = $crate::new_static_false_key();
+        static $key: $crate::StaticFalseKey = $crate::new_static_false_key();
     };
 }
 
@@ -330,7 +332,7 @@ macro_rules! define_static_key_false {
 macro_rules! define_static_key_true {
     ($key: ident) => {
         #[used]
-        static mut $key: $crate::StaticTrueKey = $crate::new_static_true_key();
+        static $key: $crate::StaticTrueKey = $crate::new_static_true_key();
     };
 }
 
@@ -346,13 +348,14 @@ macro_rules! define_static_key_true {
 /// code region memory protection, and if other threads are executing codes in the same code page, it may
 /// lead to unexpected behaviors.
 unsafe fn static_key_update<M: CodeManipulator, const S: bool>(
-    key: &mut GenericStaticKey<M, S>,
+    key: &GenericStaticKey<M, S>,
     enabled: bool,
 ) {
-    if key.enabled == enabled {
+    if key.enabled.load(core::sync::atomic::Ordering::Relaxed) == enabled {
         return;
     }
-    key.enabled = enabled;
+    key.enabled
+        .store(enabled, core::sync::atomic::Ordering::Relaxed);
     let jump_entry_stop_addr = core::ptr::addr_of!(os::JUMP_ENTRY_STOP);
     let mut jump_entry_addr = key.entries();
     if jump_entry_addr.is_null() {
@@ -365,7 +368,7 @@ unsafe fn static_key_update<M: CodeManipulator, const S: bool>(
         }
         let jump_entry = &*jump_entry_addr;
         // Not the same key
-        if key as *mut _ as usize != jump_entry.key_addr() {
+        if key as *const _ as usize != jump_entry.key_addr() {
             break;
         }
 

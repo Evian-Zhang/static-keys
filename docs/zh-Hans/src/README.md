@@ -87,11 +87,10 @@ do_something:
 
 ## 使用方式
 
-目前需要nightly版本的Rust来使用这个库。在使用者的代码中，需要声明对unstable特性`asm_goto`和`asm_const`的使用。
+目前需要nightly版本的Rust来使用这个库。在使用者的代码中，需要声明对unstable特性`asm_goto`的使用。
 
 ```rust
 #![feature(asm_goto)]
-#![feature(asm_const)]
 ```
 
 首先，在`Cargo.toml`中加入相应依赖：
@@ -135,7 +134,6 @@ fn application_initialize() {
 
 ```rust
 # #![feature(asm_goto)]
-# #![feature(asm_const)]
 # use static_keys::{define_static_key_false, static_branch_unlikely};
 # struct CommandlineArgs {}
 # impl CommandlineArgs { fn parse() -> bool { true } }
