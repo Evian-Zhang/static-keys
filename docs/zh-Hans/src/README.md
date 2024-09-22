@@ -97,7 +97,7 @@ do_something:
 
 ```toml
 [dependencies]
-static-keys = "0.5"
+static-keys = "0.6"
 ```
 
 在`main`函数开头，需要调用[`static_keys::global_init`](https://docs.rs/static-keys/latest/static_keys/fn.global_init.html)进行初始化。
