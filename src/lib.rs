@@ -34,9 +34,9 @@ impl JumpEntry {
     /// Update fields to be absolute address
     #[cfg(not(all(target_os = "windows", target_arch = "x86_64")))]
     fn make_relative_address_absolute(&mut self) {
-        self.code = (core::ptr::addr_of!(self.code) as usize).wrapping_add(self.code);
-        self.target = (core::ptr::addr_of!(self.target) as usize).wrapping_add(self.target);
-        self.key = (core::ptr::addr_of!(self.key) as usize).wrapping_add(self.key);
+        self.code = ((&raw const self.code) as usize).wrapping_add(self.code);
+        self.target = ((&raw const self.target) as usize).wrapping_add(self.target);
+        self.key = ((&raw const self.key) as usize).wrapping_add(self.key);
     }
 
     // For Win64, the relative address is truncated into 32bit.
@@ -45,11 +45,11 @@ impl JumpEntry {
     #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
     fn make_relative_address_absolute(&mut self) {
         let code = (self.code as i32) as i64 as usize;
-        self.code = (core::ptr::addr_of!(self.code) as usize).wrapping_add(code);
+        self.code = ((&raw const self.code) as usize).wrapping_add(code);
         let target = (self.target as i32) as i64 as usize;
-        self.target = (core::ptr::addr_of!(self.target) as usize).wrapping_add(target);
+        self.target = ((&raw const self.target) as usize).wrapping_add(target);
         let key = (self.key as i32) as i64 as usize;
-        self.key = (core::ptr::addr_of!(self.key) as usize).wrapping_add(key);
+        self.key = ((&raw const self.key) as usize).wrapping_add(key);
     }
 
     /// Absolute address of the JMP/NOP instruction to be modified
@@ -192,8 +192,8 @@ impl<M: CodeManipulator, const S: bool> GenericStaticKey<M, S> {
 /// Count of jump entries in __static_keys section. Note that
 /// there will be several dummy jump entries inside this section.
 pub fn jump_entries_count() -> usize {
-    let jump_entry_start_addr = core::ptr::addr_of_mut!(os::JUMP_ENTRY_START);
-    let jump_entry_stop_addr = core::ptr::addr_of_mut!(os::JUMP_ENTRY_STOP);
+    let jump_entry_start_addr = &raw mut os::JUMP_ENTRY_START;
+    let jump_entry_stop_addr = &raw mut os::JUMP_ENTRY_STOP;
     unsafe { jump_entry_stop_addr.offset_from(jump_entry_start_addr) as usize }
 }
 
@@ -242,8 +242,8 @@ pub fn global_init() {
 
 /// Inner function to [`global_init`]
 fn global_init_inner() {
-    let jump_entry_start_addr = core::ptr::addr_of_mut!(os::JUMP_ENTRY_START);
-    let jump_entry_stop_addr = core::ptr::addr_of_mut!(os::JUMP_ENTRY_STOP);
+    let jump_entry_start_addr = &raw mut os::JUMP_ENTRY_START;
+    let jump_entry_stop_addr = &raw mut os::JUMP_ENTRY_STOP;
     let jump_entry_len =
         unsafe { jump_entry_stop_addr.offset_from(jump_entry_start_addr) as usize };
     let jump_entries =
@@ -356,7 +356,7 @@ unsafe fn static_key_update<M: CodeManipulator, const S: bool>(
     }
     key.enabled
         .store(enabled, core::sync::atomic::Ordering::Relaxed);
-    let jump_entry_stop_addr = core::ptr::addr_of!(os::JUMP_ENTRY_STOP);
+    let jump_entry_stop_addr = &raw const os::JUMP_ENTRY_STOP;
     let mut jump_entry_addr = key.entries();
     if jump_entry_addr.is_null() {
         // This static key is never used
