@@ -40,3 +40,7 @@ Because when passing a static variable to inline assembly as `sym` argument, it 
 ## Can I use this crate in `no_std`?
 
 Yes.
+
+## How can I use this crate in bare metal?
+
+You should modify your linker script to add `__start` and `__stop` prefix symbols for marking start and end address of corresponding sections. For more details, see [Evian-Zhang/static-keys#6](https://github.com/Evian-Zhang/static-keys/pull/6).

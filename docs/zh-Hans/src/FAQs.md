@@ -39,3 +39,7 @@
 ## 我可以在`no_std`环境中使用吗？
 
 可以
+
+## 我可以在裸金属环境中使用吗？
+
+可以。需要修改linker script，在对应的节前后加上`__start`和`__stop`为前缀的相应符号。具体可见[Evian-Zhang/static-keys#6](https://github.com/Evian-Zhang/static-keys/pull/6)。

@@ -23,6 +23,8 @@ Currently CI-tested platforms:
 
     * `x86_64-pc-windows-msvc`
     * `i686-pc-windows-msvc`
+* Bare metal (No CI)
+    * Should work with above-mentioned architectures. For more detail, see [FAQ](https://evian-zhang.github.io/static-keys/en/FAQs.html#How-can-I-use-this-crate-in-bare-metal).
 
 Note that when using cross-rs to build `loongarch64-unknown-linux-gnu` target, you should use latest cross-rs avaiable on GitHub. See [Evian-Zhang/static-keys#4](https://github.com/Evian-Zhang/static-keys/pull/4) for more details.
 

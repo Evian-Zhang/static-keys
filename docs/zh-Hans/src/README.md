@@ -23,6 +23,8 @@
 
     * `x86_64-pc-windows-msvc`
     * `i686-pc-windows-msvc`
+* 裸金属（未经过CI测试）
+    * 上述架构应该都能支持。具体可见[FAQ](https://evian-zhang.github.io/static-keys/zh-Hans/FAQs.html#我可以在裸金属环境中使用吗)
 
 需要注意，如果使用cross-rs交叉编译`loongarch64-unknown-linux-gnu`平台，需要使用GitHub上的最新版cross-rs。更多细节可参见[Evian-Zhang/static-keys#4](https://github.com/Evian-Zhang/static-keys/pull/4)。
 
