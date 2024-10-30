@@ -16,3 +16,9 @@ pub use macos::*;
 mod windows;
 #[cfg(target_os = "windows")]
 pub use windows::*;
+
+#[cfg(target_os = "none")]
+mod none;
+
+#[cfg(target_os = "none")]
+pub use none::*;
