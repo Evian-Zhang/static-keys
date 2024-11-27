@@ -1,6 +1,6 @@
 //! macOS-specific implementations
 
-use crate::{code_manipulate::CodeManipulator, JumpEntry};
+use crate::{JumpEntry, code_manipulate::CodeManipulator};
 
 // See https://developer.apple.com/library/archive/documentation/DeveloperTools/Reference/Assembler/040-Assembler_Directives/asm_directives.html#//apple_ref/doc/uid/TP30000823-CJBIFBJG
 /// Name and attribute of section storing jump entries
@@ -13,7 +13,7 @@ macro_rules! os_static_key_sec_name_attr {
 }
 
 // See https://stackoverflow.com/q/17669593/10005095 and https://github.com/apple-opensource-mirror/ld64/blob/master/unit-tests/test-cases/section-labels/main.c
-extern "Rust" {
+unsafe extern "Rust" {
     /// Address of this static is the start address of __static_keys section
     #[link_name = "\x01section$start$__DATA$__static_keys"]
     pub static mut JUMP_ENTRY_START: JumpEntry;

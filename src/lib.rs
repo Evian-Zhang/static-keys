@@ -173,7 +173,7 @@ impl<M: CodeManipulator, const S: bool> GenericStaticKey<M, S> {
     /// code region memory protection, and if other threads are executing codes in the same code page, it may
     /// lead to unexpected behaviors.
     pub unsafe fn enable(&self) {
-        static_key_update(self, true)
+        unsafe { static_key_update(self, true) }
     }
 
     /// Disable this static key (make the value to be `false`). Do nothing if current static key is already disabled.
@@ -185,7 +185,7 @@ impl<M: CodeManipulator, const S: bool> GenericStaticKey<M, S> {
     /// code region memory protection, and if other threads are executing codes in the same code page, it may
     /// lead to unexpected behaviors.
     pub unsafe fn disable(&self) {
-        static_key_update(self, false)
+        unsafe { static_key_update(self, false) }
     }
 }
 
@@ -366,15 +366,16 @@ unsafe fn static_key_update<M: CodeManipulator, const S: bool>(
         if jump_entry_addr >= jump_entry_stop_addr {
             break;
         }
-        let jump_entry = &*jump_entry_addr;
+        let jump_entry = unsafe { &*jump_entry_addr };
         // Not the same key
         if key as *const _ as usize != jump_entry.key_addr() {
             break;
         }
 
-        jump_entry_update::<M>(jump_entry, enabled);
-
-        jump_entry_addr = jump_entry_addr.add(1);
+        unsafe {
+            jump_entry_update::<M>(jump_entry, enabled);
+            jump_entry_addr = jump_entry_addr.add(1);
+        }
     }
 }
 
@@ -403,7 +404,9 @@ unsafe fn jump_entry_update<M: CodeManipulator>(jump_entry: &JumpEntry, enabled:
     };
     let code_bytes = arch::arch_jump_entry_instruction(jump_label_type, jump_entry);
 
-    M::write_code(jump_entry.code_addr() as *mut _, &code_bytes);
+    unsafe {
+        M::write_code(jump_entry.code_addr() as *mut _, &code_bytes);
+    }
 }
 
 // ---------------------------- Use ----------------------------

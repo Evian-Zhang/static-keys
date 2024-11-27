@@ -1,6 +1,6 @@
 //! Linux-specific implementations
 
-use crate::{code_manipulate::CodeManipulator, JumpEntry};
+use crate::{JumpEntry, code_manipulate::CodeManipulator};
 
 // See https://sourceware.org/binutils/docs/as/Section.html
 /// Name and attribute of section storing jump entries
@@ -15,7 +15,7 @@ macro_rules! os_static_key_sec_name_attr {
 // See https://sourceware.org/binutils/docs/ld/Input-Section-Example.html, modern linkers
 // will generate these two symbols indicating the start and end address of __static_keys
 // section. Note that the end address is excluded.
-extern "Rust" {
+unsafe extern "Rust" {
     /// Address of this static is the start address of __static_keys section
     #[link_name = "__start___static_keys"]
     pub static mut JUMP_ENTRY_START: JumpEntry;

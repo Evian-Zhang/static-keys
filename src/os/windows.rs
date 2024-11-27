@@ -2,12 +2,12 @@
 
 use windows::Win32::System::{
     Diagnostics::Debug::FlushInstructionCache,
-    Memory::{VirtualProtect, PAGE_EXECUTE_READWRITE, PAGE_PROTECTION_FLAGS},
+    Memory::{PAGE_EXECUTE_READWRITE, PAGE_PROTECTION_FLAGS, VirtualProtect},
     SystemInformation::{GetSystemInfo, SYSTEM_INFO},
     Threading::GetCurrentProcess,
 };
 
-use crate::{code_manipulate::CodeManipulator, JumpEntry};
+use crate::{JumpEntry, code_manipulate::CodeManipulator};
 
 // Bugs here, DO NOT USE. See https://github.com/rust-lang/rust/issues/128177
 // See https://sourceware.org/binutils/docs/as/Section.html
