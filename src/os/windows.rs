@@ -22,10 +22,10 @@ macro_rules! os_static_key_sec_name_attr {
 
 // See https://stackoverflow.com/a/14783759 and https://devblogs.microsoft.com/oldnewthing/20181107-00/?p=100155
 /// Address of this static is the start address of .stks section
-#[link_section = ".stks$a"]
+#[unsafe(link_section = ".stks$a")]
 pub static mut JUMP_ENTRY_START: JumpEntry = JumpEntry::dummy();
 /// Address of this static is the end address of .stks section
-#[link_section = ".stks$c"]
+#[unsafe(link_section = ".stks$c")]
 pub static mut JUMP_ENTRY_STOP: JumpEntry = JumpEntry::dummy();
 
 /// Arch-specific [`CodeManipulator`] using `VirtualProtect`.
@@ -58,7 +58,9 @@ impl CodeManipulator for ArchCodeManipulator {
         if res.is_err() {
             panic!("Unable to make code region writable");
         }
-        core::ptr::copy_nonoverlapping(data.as_ptr(), addr.cast(), L);
+        unsafe {
+            core::ptr::copy_nonoverlapping(data.as_ptr(), addr.cast(), L);
+        }
         let mut old_protect = PAGE_PROTECTION_FLAGS::default();
         let res = unsafe {
             VirtualProtect(

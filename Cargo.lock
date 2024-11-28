@@ -4,9 +4,9 @@ version = 4
 
 [[package]]
 name = "clear-cache"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20d9da0bc09582e0aa48f88476160bfe0f5f82cf97fc47eef1f701b7f59e27d2"
+checksum = "fe05a1a3c09033e9e87f7ba13af35cf2508148d3a97fb6b16475df84207993fa"
 dependencies = [
  "libc",
  "windows",

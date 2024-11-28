@@ -46,77 +46,91 @@ impl CodeManipulator for ArchCodeManipulator {
         let mut remap_addr = 0;
         let mut cur_prot = 0;
         let mut max_prot = 0;
-        let self_task = mach2::traps::mach_task_self();
+        let self_task = unsafe { mach2::traps::mach_task_self() };
         let length = L as u64;
 
         // 1. Remap the page somewhere else
-        let ret = mach2::vm::mach_vm_remap(
-            self_task,
-            &mut remap_addr,
-            length,
-            0,
-            mach2::vm_statistics::VM_FLAGS_ANYWHERE | VM_FLAGS_RETURN_DATA_ADDR,
-            self_task,
-            addr as u64,
-            0,
-            &mut cur_prot,
-            &mut max_prot,
-            mach2::vm_inherit::VM_INHERIT_NONE,
-        );
+        let ret = unsafe {
+            mach2::vm::mach_vm_remap(
+                self_task,
+                &mut remap_addr,
+                length,
+                0,
+                mach2::vm_statistics::VM_FLAGS_ANYWHERE | VM_FLAGS_RETURN_DATA_ADDR,
+                self_task,
+                addr as u64,
+                0,
+                &mut cur_prot,
+                &mut max_prot,
+                mach2::vm_inherit::VM_INHERIT_NONE,
+            )
+        };
         if ret != mach2::kern_return::KERN_SUCCESS {
             panic!("mach_vm_remap to new failed");
         }
 
         // 2. Reprotect the page to rw- (needs VM_PROT_COPY because the max protection is currently r-x)
-        let ret = mach2::vm::mach_vm_protect(
-            self_task,
-            remap_addr,
-            length,
-            0,
-            mach2::vm_prot::VM_PROT_READ
-                | mach2::vm_prot::VM_PROT_WRITE
-                | mach2::vm_prot::VM_PROT_COPY,
-        );
+        let ret = unsafe {
+            mach2::vm::mach_vm_protect(
+                self_task,
+                remap_addr,
+                length,
+                0,
+                mach2::vm_prot::VM_PROT_READ
+                    | mach2::vm_prot::VM_PROT_WRITE
+                    | mach2::vm_prot::VM_PROT_COPY,
+            )
+        };
         if ret != mach2::kern_return::KERN_SUCCESS {
             panic!("mach_vm_protect to write failed");
         }
 
         // 3. Write the changes
-        core::ptr::copy_nonoverlapping(data.as_ptr(), remap_addr as *mut _, L);
+        unsafe {
+            core::ptr::copy_nonoverlapping(data.as_ptr(), remap_addr as *mut _, L);
+        }
 
         // 4. Flush the data cache
-        sys_dcache_flush(addr, L);
+        unsafe {
+            sys_dcache_flush(addr, L);
+        }
 
         // 5. Reprotect the page to r-x
-        let ret = mach2::vm::mach_vm_protect(
-            self_task,
-            remap_addr,
-            length,
-            0,
-            mach2::vm_prot::VM_PROT_READ | mach2::vm_prot::VM_PROT_EXECUTE,
-        );
+        let ret = unsafe {
+            mach2::vm::mach_vm_protect(
+                self_task,
+                remap_addr,
+                length,
+                0,
+                mach2::vm_prot::VM_PROT_READ | mach2::vm_prot::VM_PROT_EXECUTE,
+            )
+        };
         if ret != mach2::kern_return::KERN_SUCCESS {
             panic!("mach_vm_protect to execute failed");
         }
 
         // 6. Invalidate the instruction cache
-        sys_icache_invalidate(addr, L);
+        unsafe {
+            sys_icache_invalidate(addr, L);
+        }
 
         // 7. Remap the page back over the original
         let mut origin_addr = addr as u64;
-        let ret = mach2::vm::mach_vm_remap(
-            self_task,
-            &mut origin_addr,
-            length,
-            0,
-            mach2::vm_statistics::VM_FLAGS_OVERWRITE | VM_FLAGS_RETURN_DATA_ADDR,
-            self_task,
-            remap_addr,
-            0,
-            &mut cur_prot,
-            &mut max_prot,
-            mach2::vm_inherit::VM_INHERIT_NONE,
-        );
+        let ret = unsafe {
+            mach2::vm::mach_vm_remap(
+                self_task,
+                &mut origin_addr,
+                length,
+                0,
+                mach2::vm_statistics::VM_FLAGS_OVERWRITE | VM_FLAGS_RETURN_DATA_ADDR,
+                self_task,
+                remap_addr,
+                0,
+                &mut cur_prot,
+                &mut max_prot,
+                mach2::vm_inherit::VM_INHERIT_NONE,
+            )
+        };
         if ret != mach2::kern_return::KERN_SUCCESS {
             panic!("mach_vm_remap to origin failed");
         }
