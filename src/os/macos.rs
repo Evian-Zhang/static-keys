@@ -22,7 +22,7 @@ unsafe extern "Rust" {
     pub static mut JUMP_ENTRY_STOP: JumpEntry;
 }
 
-extern "C" {
+unsafe extern "C" {
     // libkern/OSCacheControl.h
     // void	sys_dcache_flush( void *start, size_t len) __OSX_AVAILABLE_STARTING(__MAC_10_5, __IPHONE_2_0);
     fn sys_dcache_flush(start: *mut core::ffi::c_void, len: usize);
