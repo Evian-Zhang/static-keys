@@ -1,3 +1,4 @@
+cargo-features = ["edition2024"]
 [package]
 name = "static-keys"
 version = "0.6.2"

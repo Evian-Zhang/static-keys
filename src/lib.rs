@@ -187,6 +187,11 @@ impl<M: CodeManipulator, const S: bool> GenericStaticKey<M, S> {
     pub unsafe fn disable(&self) {
         unsafe { static_key_update(self, false) }
     }
+
+    /// Get the current status of this static key
+    pub fn is_enabled(&self) -> bool {
+        self.enabled.load(core::sync::atomic::Ordering::Relaxed)
+    }
 }
 
 /// Count of jump entries in __static_keys section. Note that
