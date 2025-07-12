@@ -13,10 +13,6 @@ In userland, it is very complicated to modify an instruction which may be execut
 
 Another reason is that we need to manipulate memory protection to bypass DEP, which may involves race condition on the protection itself in multi-thread environment. Mutex may be used to avoid data race, while if cargo resolves multi-version static-key crates dependencies, the mutexes would be duplicated for each version, and this approach is thus useless. This shall be resolved when [RFC 1977: public & private dependencies](https://github.com/rust-lang/rust/issues/44663) is stabilized. [rust-lang/cargo#2363](https://github.com/rust-lang/cargo/issues/2363) is also a reference.
 
-## Why is nightly Rust required?
-
-We use inline assembly internally, where `asm_goto` and `asm_const` feature is required. As long as these two features are stablized, we can use stable Rust then.
-
 ## Why `static_branch_likely!` and `static_branch_unlikely!` are implemented as macros?
 
 Because when passing a static variable to inline assembly as `sym` argument, it requires the argument to be a static path. We cannot construct such path in a function.

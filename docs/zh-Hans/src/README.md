@@ -89,17 +89,11 @@ do_something:
 
 ## 使用方式
 
-目前需要nightly版本的Rust来使用这个库。在使用者的代码中，需要声明对unstable特性`asm_goto`的使用。
-
-```rust
-#![feature(asm_goto)]
-```
-
 首先，在`Cargo.toml`中加入相应依赖：
 
 ```toml
 [dependencies]
-static-keys = "0.7"
+static-keys = "0.8"
 ```
 
 在`main`函数开头，需要调用[`static_keys::global_init`](https://docs.rs/static-keys/latest/static_keys/fn.global_init.html)进行初始化。
@@ -135,7 +129,6 @@ fn application_initialize() {
 在定义static key之后，就可以像平常一样用`if`语句来使用这个static key了（[这个](https://doc.rust-lang.org/std/intrinsics/fn.likely.html)和[这个](https://kernelnewbies.org/FAQ/LikelyUnlikely)介绍了`likely`和`unlikely` API的语义）。同一个static key可以在多个`if`语句中被使用。当这个static key被修改时，所有使用这个static key的`if`语句都将被统一修改为`jmp`或`nop`。
 
 ```rust
-# #![feature(asm_goto)]
 # use static_keys::{define_static_key_false, static_branch_unlikely};
 # struct CommandlineArgs {}
 # impl CommandlineArgs { fn parse() -> bool { true } }

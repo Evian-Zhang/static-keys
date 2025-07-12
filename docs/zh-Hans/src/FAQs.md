@@ -13,10 +13,6 @@
 
 另一个原因是我们需要操作内存保护权限来绕过DEP，但是在多线程环境下，这会引发保护权限本身的race condition。尽管可以用mutex来解决数据竞争的问题，但是如果cargo解析出多版本的static-keys依赖，那么每个版本中都会有一个全局mutex实例，这种方法就失效了。这个可以被[RFC 1977: public & private dependencies](https://github.com/rust-lang/rust/issues/44663)解决。[rust-lang/cargo#2363](https://github.com/rust-lang/cargo/issues/2363)亦可供参考。
 
-## 为什么需要nightly Rust？
-
-我们在内部使用了内联汇编，并且使用了`asm_goto`和`asm_const`这两个特性。只要这两个特性稳定了，我们就能使用stable Rust了。
-
 ## 为什么`static_branch_likely!`和`static_branch_unlikely!`是宏？
 
 因为内联汇编的`sym`参数需要是静态路径，这在函数里是做不到的。

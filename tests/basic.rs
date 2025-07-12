@@ -1,7 +1,5 @@
 //! This test is designed to be run in single thread. Always pass `--test-threads=1`!
 
-#![feature(asm_goto)]
-
 use std::sync::Once;
 
 use static_keys::{

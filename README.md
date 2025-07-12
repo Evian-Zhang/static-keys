@@ -89,17 +89,11 @@ Although replacing a `test`-`jnz` pair to `nop` may be minor improvement, howeve
 
 ## Usage
 
-To use this crate, currently nightly Rust is required. And in the crate root top, you should declare usage of unstable features `asm_goto`.
-
-```rust
-#![feature(asm_goto)]
-```
-
 First, add this crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-static-keys = "0.7"
+static-keys = "0.8"
 ```
 
 At the beginning of `main` function, you should invoke [`static_keys::global_init`](https://docs.rs/static-keys/latest/static_keys/fn.global_init.html) to initialize.

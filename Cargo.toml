@@ -1,6 +1,6 @@
 [package]
 name = "static-keys"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 authors = ["Evian-Zhang <evianzhang1999@163.com>"]
 license = "MIT OR Apache-2.0"
@@ -23,7 +23,12 @@ clear-cache = "0.1"
 mach2 = "0.4"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-windows = { version = "0.59", features = ["Win32_System_SystemInformation", "Win32_System_Memory", "Win32_System_Threading", "Win32_System_Diagnostics_Debug"] }
+windows = { version = "0.61", features = [
+  "Win32_System_SystemInformation",
+  "Win32_System_Memory",
+  "Win32_System_Threading",
+  "Win32_System_Diagnostics_Debug",
+] }
 
 [dev-dependencies]
 trybuild = "1"

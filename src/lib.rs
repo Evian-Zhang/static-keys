@@ -1,6 +1,5 @@
 #![doc = include_str!("../docs/en/src/README.md")]
 #![no_std]
-#![feature(asm_goto)]
 #![allow(clippy::needless_doctest_main)]
 
 mod arch;

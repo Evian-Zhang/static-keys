@@ -89,17 +89,11 @@ Although replacing a `test`-`jnz` pair to `nop` may be minor improvement, howeve
 
 ## Usage
 
-To use this crate, currently nightly Rust is required. And in the crate root top, you should declare usage of unstable feature `asm_goto`.
-
-```rust
-#![feature(asm_goto)]
-```
-
 First, add this crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-static-keys = "0.7"
+static-keys = "0.8"
 ```
 
 At the beginning of `main` function, you should invoke [`static_keys::global_init`](https://docs.rs/static-keys/latest/static_keys/fn.global_init.html) to initialize.
@@ -135,7 +129,6 @@ Note that you can enable or disable the static key any number of times at any ti
 After the definition, you can use this static key at `if`-check as usual (you can see [here](https://doc.rust-lang.org/std/intrinsics/fn.likely.html) and [here](https://kernelnewbies.org/FAQ/LikelyUnlikely) to know more about the `likely`-`unlikely` API semantics). A static key can be used at multiple `if`-checks. If the static key is modified, all locations using this static key will be modified to `jmp` or `nop` accordingly.
 
 ```rust
-# #![feature(asm_goto)]
 # use static_keys::{define_static_key_false, static_branch_unlikely};
 # struct CommandlineArgs {}
 # impl CommandlineArgs { fn parse() -> bool { true } }

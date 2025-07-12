@@ -1,5 +1,3 @@
-#![feature(asm_goto)]
-
 use static_keys::{define_static_key_false, static_branch_unlikely};
 
 define_static_key_false!(MY_STATIC_KEY);
