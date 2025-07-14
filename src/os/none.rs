@@ -1,6 +1,6 @@
 //! Other OS-specific implementations
 
-use crate::{code_manipulate::CodeManipulator, JumpEntry};
+use crate::{JumpEntry, code_manipulate::CodeManipulator};
 use core::ffi::c_void;
 
 /// Name and attribute of section storing jump entries

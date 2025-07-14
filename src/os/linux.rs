@@ -1,6 +1,6 @@
 //! Linux-specific implementations
 
-use crate::{code_manipulate::CodeManipulator, JumpEntry};
+use crate::{JumpEntry, code_manipulate::CodeManipulator};
 
 // See https://sourceware.org/binutils/docs/as/Section.html
 /// Name and attribute of section storing jump entries

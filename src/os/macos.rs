@@ -1,6 +1,6 @@
 //! macOS-specific implementations
 
-use crate::{code_manipulate::CodeManipulator, JumpEntry};
+use crate::{JumpEntry, code_manipulate::CodeManipulator};
 
 // See https://developer.apple.com/library/archive/documentation/DeveloperTools/Reference/Assembler/040-Assembler_Directives/asm_directives.html#//apple_ref/doc/uid/TP30000823-CJBIFBJG
 /// Name and attribute of section storing jump entries
