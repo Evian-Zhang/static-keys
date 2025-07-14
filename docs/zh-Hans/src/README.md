@@ -4,7 +4,7 @@
 [![Crates.io Version](https://img.shields.io/crates/v/static-keys)](https://crates.io/crates/static-keys)
 [![docs.rs](https://img.shields.io/docsrs/static-keys?logo=docs.rs)](https://docs.rs/static-keys)
 
-[Static key](https://docs.kernel.org/staging/static-keys.html)是Linux内核中的一个底层机制，用于加速对很少改变的特性的条件判断检查。我们将这一特性迁移到了用户态Rust程序中，适用于Linux、macOS和Windows。（目前需要Nightly版本的Rust，原因请参见[FAQ](https://evian-zhang.github.io/static-keys/zh-Hans/FAQs.html#为什么需要nightly-rust)）
+[Static key](https://docs.kernel.org/staging/static-keys.html)是Linux内核中的一个底层机制，用于加速对很少改变的特性的条件判断检查。我们将这一特性迁移到了用户态Rust程序中，适用于Linux、macOS和Windows。
 
 目前在CI中经过测试的支持平台包括：
 
@@ -95,6 +95,8 @@ do_something:
 [dependencies]
 static-keys = "0.8"
 ```
+
+（目前最低支持Rust 1.87版本。如果您使用的是更古老的版本，请考虑把当前crate的版本固定在`0.7`）
 
 在`main`函数开头，需要调用[`static_keys::global_init`](https://docs.rs/static-keys/latest/static_keys/fn.global_init.html)进行初始化。
 

@@ -4,7 +4,7 @@
 [![Crates.io Version](https://img.shields.io/crates/v/static-keys)](https://crates.io/crates/static-keys)
 [![docs.rs](https://img.shields.io/docsrs/static-keys?logo=docs.rs)](https://docs.rs/static-keys)
 
-[Static key](https://docs.kernel.org/staging/static-keys.html) is a mechanism used by Linux kernel to speed up checks of seldomly changed features. We brought it to Rust userland applications for Linux, macOS and Windows! (Currently nightly Rust required. For reasons, see [FAQ](https://evian-zhang.github.io/static-keys/en/FAQs.html#why-is-nightly-rust-required)).
+[Static key](https://docs.kernel.org/staging/static-keys.html) is a mechanism used by Linux kernel to speed up checks of seldomly changed features. We brought it to Rust userland applications for Linux, macOS and Windows!
 
 Currently CI-tested platforms:
 
@@ -95,6 +95,8 @@ First, add this crate to your `Cargo.toml`:
 [dependencies]
 static-keys = "0.8"
 ```
+
+(The minimal supported Rust version is 1.87. So if you are using older Rust version, pin the crate version to `0.7`.)
 
 At the beginning of `main` function, you should invoke [`static_keys::global_init`](https://docs.rs/static-keys/latest/static_keys/fn.global_init.html) to initialize.
 
